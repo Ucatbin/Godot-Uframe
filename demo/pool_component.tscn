@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://cmu4euoj34ub0"]
+
+[ext_resource type="Script" uid="uid://g75vow2t55p2" path="res://UcatFrameWork/components/PoolComponent.gd" id="1_u8fbp"]
+[ext_resource type="Script" uid="uid://b3sh2chjqm2h0" path="res://UcatFrameWork/components/InventoryComponent.gd" id="2_fuj5d"]
+
+[node name="PoolComponent" type="Node" unique_id=115449125]
+script = ExtResource("1_u8fbp")
+metadata/_custom_type_script = "uid://g75vow2t55p2"
+
+[node name="InventoryComponent" type="Node" parent="." unique_id=400380237]
+script = ExtResource("2_fuj5d")
+metadata/_custom_type_script = "uid://b3sh2chjqm2h0"

@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="DataComponent" format=3 uid="uid://cqplqben56w1o"]
+
+[ext_resource type="Script" uid="uid://gxux5pq2ilp" path="res://UcatFrameWork/components/DataComponent.gd" id="1_tqm8a"]
+
+[resource]
+script = ExtResource("1_tqm8a")
+metadata/_custom_type_script = "uid://gxux5pq2ilp"
