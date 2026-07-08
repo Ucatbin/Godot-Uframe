@@ -17,10 +17,6 @@ extends Node
 ## [br]映射：[br]
 ## [param event_name] → [param handlers]
 var _subscribers: Dictionary = {}
-
-## [b]待清理的目标[/b][br]
-## 用于延迟清理
-var _pending_cleanup: Array = []
 #endregion
 
 #region 发送/订阅/取消订阅
@@ -54,7 +50,7 @@ func send(event_name: String, data: Variant = null) -> void:
 		else:
 			callable.call()
 
-		if once:
+		if is_once:
 			to_remove.append(entry)
 
 	# 清理无效/一次性监听
