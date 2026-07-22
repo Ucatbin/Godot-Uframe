@@ -1,9 +1,10 @@
 extends Node
 
 '''
-内容注册总线（Autoload 单例）
-所有内容必须通过注册表注册，获得唯一 ID
-跨模块通过 ID 引用，不直接依赖彼此的代码
+描述：
+	内容注册总线（Autoload 单例）
+	所有内容必须通过注册表注册，获得唯一 ID
+	跨模块通过 ID 引用，不直接依赖彼此的代码
 
 职责：
 	注册游戏内所有可被定义内容
@@ -12,21 +13,21 @@ extends Node
 	# 注册一个武器
 	Registry.register("weapon", "mygame:fire_sword", preload("res://weapons/fire_sword.tres"))
 	# 获取武器
-	var sword = Registry.get("weapon", "mygame:fire_sword")
+	var sword = Registry.get_value("weapon", "mygame:fire_sword")
 	# 遍历所有武器
 	for id in Registry.list_ids("weapon"):
-		print(id, Registry.get("weapon", id))
+		print(id, Registry.get_value("weapon", id))
 '''
 
 #region 信号
-## [b]事件订阅时调用[/b][br]
-## [br]参数：[br]
+## [b]注册完成事件[/b][br]
+## [br][b]参数：[/b][br]
 ## [param content_type] : 注册到的类型[br]
 ## [param content_id] : 唯一标识符
 signal content_registered(content_type: String, content_id: String)
 
-## [b]事件注销订阅时调用[/b][br]
-## [br]参数：[br]
+## [b]注销完成事件[/b][br]
+## [br][b]参数：[.b][br]
 ## [param content_type] : 注册到的类型[br]
 ## [param content_id] : 唯一标识符
 signal content_unregistered(content_type: String, content_id: String)
@@ -40,8 +41,9 @@ var _registry: Dictionary = {}
 #endregion
 
 #region  注册/反注册
-## [b]注册内容到指定类型下[/b][br]
-## [br]参数：[br]
+## [b]描述：[/b][br]
+## 注册内容到指定类型下[br]
+## [br][b]参数：[/b][br]
 ## [param content_type] : 内容类型，如 "weapon"、"enemy"、"item"、"skill"[br]
 ## [param content_id] : 唯一标识符，建议格式 [code]"modname:content_name"[/code][br]
 ## [param value] : 内容本体（通常是 [Resource]，也可以是脚本/场景）
@@ -57,8 +59,9 @@ func register(content_type: String, content_id: String, value: Variant) -> void:
 	bucket[content_id] = value
 	content_registered.emit(content_type, content_id)
 
-## [b]反注册[/b]
-## [br]参数：[br]
+## [b]描述：[/b][br]
+## 反注册[br]
+## [br][b]参数：[/b][br]
 ## [param content_type] : 内容类型[br]
 ## [param content_id] : 唯一标识符
 func unregister(content_type: String, content_id: String) -> void:
@@ -70,10 +73,10 @@ func unregister(content_type: String, content_id: String) -> void:
 	_registry[content_type].erase(content_id)
 	content_unregistered.emit(content_type, content_id)
 	
-## [b]自动注册[/b][br]
-## 扫描目录，自动注册所有 .tres / .res 文件
+## [b]描述：[/b][br]
+## 自动注册，扫描目录，自动注册所有 .tres / .res 文件
 ## 生成的 ID 格式为："prefix:filename"[br]
-## [br]参数：[br]
+## [br][b]参数：[/b][br]
 ## [param content_type] : 注册到的类型[br]
 ## [param dir_path] : 如 "res://data/weapons/"[br]
 ## [param id_prefix] : 可选，如 "mygame"
@@ -109,8 +112,9 @@ func register_from_directory(content_type: String, dir_path: String, id_prefix: 
 #endregion
 
 #region 工具方法
-## [b]检查某个内容是否已注册[/b][br]
-## [br]参数：[br]
+## [b]描述：[/b][br]
+## 检查某个内容是否已注册[br]
+## [br][b]参数：[/b][br]
 ## [param content_type] : 内容类型[br]
 ## [param content_id] : 唯一标识符
 func has(content_type: String, content_id: String) -> bool:
@@ -118,9 +122,9 @@ func has(content_type: String, content_id: String) -> bool:
 		return false
 	return _registry[content_type].has(content_id)
 
-## [b]获取已注册的内容[/b][br]
-## 如果获取失败返回 [param default][br]
-## [br]参数：[br]
+## [b]描述：[/b][br]
+## 获取已注册的内容，如果获取失败返回 [param default][br]
+## [br][b]参数：[/b][br]
 ## [param content_type] : 内容类型[br]
 ## [param content_id] : 唯一标识符[br]
 ## [param default] : 默认返回值
@@ -129,19 +133,23 @@ func get_value(content_type: String, content_id: String, default: Variant = null
 		return default
 	return _registry[content_type][content_id]
 
-## [b]列出某个类型下所有已注册的 ID[/b][br]
-## [br]参数：[br]
+## [b]描述：[/b][br]
+## 列出某个类型下所有已注册的ID[br]
+## [br][b]参数：[/b][br]
 ## [param content_type] : 内容类型
 func list_ids(content_type: String) -> Array:
 	if not _registry.has(content_type):
 		return []
 	return _registry[content_type].keys()
 
-## [b]列出所有已注册的内容类型[/b]
+## [b]描述：[/b][br]
+## 列出所有已注册的内容类型
 func list_types() -> Array:
 	return _registry.keys()
 
-## [b]返回某类型下所有内容的字典副本[/b]
+## [b]描述：[/b][br]
+## 返回某类型下所有内容的字典副本
+## [param content_type] : 类型名称
 func get_all(content_type: String) -> Dictionary:
 	if not _registry.has(content_type):
 		return {}
