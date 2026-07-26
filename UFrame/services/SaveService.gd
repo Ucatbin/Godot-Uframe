@@ -1,17 +1,34 @@
 extends Node
+
+'''
+描述：
+	存档/读档服务（Autoload 单例）
+	负责序列化 Resource 到 user://saves/ 目录
+
+用法：
+	# 保存
+	SaveService.save(run_data, "slot_1")
+	# 读取
+	var data = SaveService.load("slot_1")
+	# 删除
+	SaveService.delete("slot_1")
+	# 列出所有存档
+	var saves = SaveService.list_saves()
+'''
+
 class_name SaveService
 
-# SaveService.gd
-# 存档/读档服务，负责序列化 RunData
-# 挂载方式：设为 Autoload，名称 "SaveService"
-
+#region 常量
 const SAVE_DIR := "user://saves/"
-const AUTO_SAVE_FILE := "user://saves/auto_save.tres"
+#endregion
 
-
-# ========== 公共方法 ==========
-
-## 保存 RunData 到指定文件
+#region 保存/读取
+## [b]保存 Resource 到指定文件[/b][br]
+## [br]参数：[br]
+## [param data] : 要保存的 Resource[br]
+## [param file_name] : 文件名（不含扩展名），默认 "auto_save"[br]
+## [br]返回：[/br]
+## 是否保存成功
 func save(data: Resource, file_name: String = "auto_save") -> bool:
 	if data == null:
 		push_error("[SaveService] 数据为空，无法保存")
@@ -31,8 +48,12 @@ func save(data: Resource, file_name: String = "auto_save") -> bool:
 	print("[SaveService] 已保存: %s" % path)
 	return true
 
-
-## 读取 RunData，文件不存在则返回新实例
+## [b]读取存档[/b][br]
+## 文件不存在时返回默认实例[br]
+## [br]参数：[br]
+## [param file_name] : 文件名（不含扩展名），默认 "auto_save"[br]
+## [br]返回：[/br]
+## 读取到的 Resource，失败时返回默认实例
 func load(file_name: String = "auto_save") -> Resource:
 	var path := SAVE_DIR + file_name + ".tres"
 	if not ResourceLoader.exists(path):
@@ -47,8 +68,11 @@ func load(file_name: String = "auto_save") -> Resource:
 	print("[SaveService] 已读取: %s" % path)
 	return data
 
-
-## 删除指定存档
+## [b]删除指定存档[/b][br]
+## [br]参数：[br]
+## [param file_name] : 文件名（不含扩展名）[br]
+## [br]返回：[/br]
+## 是否删除成功
 func delete(file_name: String = "auto_save") -> bool:
 	var path := SAVE_DIR + file_name + ".tres"
 	if FileAccess.file_exists(path):
@@ -57,8 +81,9 @@ func delete(file_name: String = "auto_save") -> bool:
 		return true
 	return false
 
-
-## 列出所有存档文件名
+## [b]列出所有存档文件名[/b][br]
+## [br]返回：[/br]
+## 不含扩展名的文件名数组
 func list_saves() -> Array:
 	var result: Array = []
 	var dir := DirAccess.open(SAVE_DIR)
@@ -73,12 +98,13 @@ func list_saves() -> Array:
 		file_name = dir.get_next()
 	dir.list_dir_end()
 	return result
+#endregion
 
-
-# ========== 内部方法 ==========
-
+#region 内部方法
+## [b]创建默认存档数据[/b][br]
+## 优先尝试加载项目的 RunData，否则返回空 Resource
 func _create_default_data() -> Resource:
-	# 如果项目有 RunData，实例化它；否则返回空 Resource
-	if ResourceLoader.exists("res://UcatFrameWork/resources/RunData.gd"):
-		return load("res://UcatFrameWork/resources/RunData.gd").new()
+	if ResourceLoader.exists("res://UFrame/resources/RunData.gd"):
+		return load("res://UFrame/resources/RunData.gd").new()
 	return Resource.new()
+#endregion

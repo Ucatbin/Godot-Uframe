@@ -1,4 +1,4 @@
-# UcatFrameWork
+# UFrame
 
 通用 Godot 4 游戏开发框架。
 
@@ -10,7 +10,7 @@
 
 | 理念 | 来源 | 实现 |
 |---|---|---|
-| 内容=数据文件，不碰核心代码 | Minecraft Mod | `Registry` + `BaseData` Resource |
+| 内容=数据文件，不碰核心代码 | Minecraft Mod | `Registry` + `DataComponent` Resource |
 | 逻辑集中，节点只管表现 | Brotato | `services/` 层 |
 | 模块间不直接依赖 | Minecraft Forge | `EventBus` 事件通信 |
 | 行为可组合，不写巨型脚本 | Brotato | `components/` 组件系统 |
@@ -22,7 +22,7 @@
 
 ### 1. 安装
 
-将 `UcatFrameWork/` 文件夹复制到你的 Godot 项目 `addons/` 目录下。
+将 `UFrame/` 文件夹复制到你的 Godot 项目 `addons/` 目录下。
 
 ### 2. 启用插件
 
@@ -108,16 +108,13 @@ Registry.register_from_directory("weapon", "res://data/weapons/", "mygame")
 | `AudioService.gd` | 统一管理音效，对象池限制并发 | ✅ 需要 |
 | `CameraService.gd` | 屏幕震动（Perlin Noise）、慢动作 | ✅ 需要 |
 | `TransitionService.gd` | 场景切换淡入淡出（CanvasLayer） | ✅ 需要 |
-| `PoolService.gd` | 对象池，管理子弹/粒子复用 | ❌ 静态类，直接调用 |
 
 ```gdscript
 SaveService.save(RunData_instance, "slot_1")
 AudioService.play_sfx(load("res://sfx/hit.wav"))
 CameraService.add_trauma(0.6)
 await TransitionService.change_scene("res://levels/level2.tscn")
-PoolService.register("bullet", bullet_scene, 20)
-# 也可以指定父节点：PoolService.register("bullet", bullet_scene, 20, self)
-var b = PoolService.get_instance("bullet")
+var b = $BulletPool.get_instance()
 ```
 
 ### `components/` — 可复用节点组件
@@ -148,7 +145,10 @@ if $InventoryComponent.has_item("mygame:key", 3):
 	open_door()
 ```
 
-### `resources/BaseData.gd`
+### `resources/RunData.gd`
+默认存档 Resource 基类。项目应继承此类添加自定义存档字段。
+
+### `components/DataComponent.gd`
 所有内容 Resource 的基类。子类加字段即可定义新内容类型。
 项目里继承它创建 `WeaponData.gd`、`EnemyData.gd` 等。
 
@@ -194,33 +194,31 @@ func _init_framework():
 ## 目录结构
 
 ```
-UcatFrameWork/
+UFrame/
 ├── core/
-│   └── UcatFrame.gd            # 框架总入口
-├── event_bus/
-│   └── EventBus.gd              # 事件总线
-├── registry/
+│   ├── UcatFrame.gd             # 框架总入口
+│   ├── EventBus.gd              # 事件总线
 │   └── Registry.gd              # 内容注册总线
 ├── services/                      # 全局服务层（需 Autoload）
 │   ├── SaveService.gd
 │   ├── AudioService.gd
 │   ├── CameraService.gd
-│   ├── TransitionService.gd
-│   └── PoolService.gd            # 静态类
-├── state_machine/                  # 状态机组件
-│   ├── State.gd
-│   ├── StateMachine.gd
-│   └── StateMachineHelper.gd
-├── behaviors/                     # 行为委托组件
-│   └── BehaviorBase.gd
-├── components/                    # 其他可复用节点组件
+│   └── TransitionService.gd
+├── components/
+│   ├── state_machine/             # 状态机组件
+│   │   ├── State.gd
+│   │   ├── StateMachine.gd
+│   │   └── StateMachineHelper.gd
+│   ├── behaviors/                 # 行为委托组件
+│   │   └── BehaviorBase.gd
+│   ├── DataComponent.gd          # 数据 Resource 基类
 │   ├── HealthComponent.gd
 │   ├── HitboxComponent.gd
 │   ├── HurtboxComponent.gd
 │   ├── InventoryComponent.gd
 │   └── PoolComponent.gd          # 对象池组件
 ├── resources/
-│   └── BaseData.gd              # 数据 Resource 基类
+│   └── RunData.gd                # 存档数据基类
 ├── utils/                         # 纯工具函数库（静态类）
 │   ├── MathUtil.gd
 │   ├── TimeUtil.gd
@@ -246,4 +244,4 @@ UcatFrameWork/
 
 ## 版本
 
-`0.1.0` — 构建基础架构
+`0.2.0` — 构建基础架构，事件总线 + 注册系统 + 组件 + 服务层
