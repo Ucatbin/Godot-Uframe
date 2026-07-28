@@ -24,7 +24,8 @@ const AUTOLOADS: Array = [
 	["AudioService", "res://UFrame/services/AudioService.gd"],
 	["CameraService", "res://UFrame/services/CameraService.gd"],
 	["TransitionService", "res://UFrame/services/TransitionService.gd"],
-	["TweenService", "res://UFrame/services/TweenService.gd"],
+	["SceneService", "res://UFrame/services/SceneService.gd"],
+	["InputService", "res://UFrame/services/InputService.gd"],
 ]
 #endregion
 

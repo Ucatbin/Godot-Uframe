@@ -135,17 +135,18 @@ func shake_position(duration: float, strength: Variant = Vector2(10, 10), vibrat
 			var ry := (randf() * 2.0 - 1.0) * str_vec.y * intensity * (randomness / 90.0)
 			_shake_tween.tween_property(_camera, "offset", Vector2(rx, ry), step_duration)
 	else:
-		# 谐波模式：用 Simplex Noise 生成更平滑的震动
-		var noise := FastNoiseLite.new()
-		noise.seed = randi()
-		noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-		noise.frequency = vibrato * 0.1
+		# 谐波模式：复用 _noise 实例，只更新 seed
+		if _noise == null:
+			_noise = FastNoiseLite.new()
+			_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		_noise.seed = randi()
+		_noise.frequency = vibrato * 0.1
 		for i in range(total_steps - 1):
 			var progress := float(i) / float(total_steps)
 			var intensity := 1.0 - progress if fade_out else 1.0
 			var time_off := float(i) * 0.5
-			var ox := str_vec.x * intensity * noise.get_noise_1d(time_off) * (randomness / 90.0)
-			var oy := str_vec.y * intensity * noise.get_noise_1d(time_off + 100.0) * (randomness / 90.0)
+			var ox := str_vec.x * intensity * _noise.get_noise_1d(time_off) * (randomness / 90.0)
+			var oy := str_vec.y * intensity * _noise.get_noise_1d(time_off + 100.0) * (randomness / 90.0)
 			_shake_tween.tween_property(_camera, "offset", Vector2(ox, oy), step_duration)
 	
 	# 回到原位

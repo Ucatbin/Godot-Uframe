@@ -1,17 +1,20 @@
 extends Resource
 
 '''
+描述：
+	所有框架数据 Resource 的基类
+	项目创建子类定义武器/敌人/物品等数据，通过 Registry 注册
+
 用法：
-	1. 在编辑器中：新建 Resource，类型选 "WeaponData(继承 DataComponent)"
+	1. 在编辑器中：新建 Resource，类型选 "WeaponData(继承 ResourceData)"
 	2. 填写 id/display_name/description/icon
 	3. 在游戏初始化时：
 		Registry.register("weapon", resource.id, resource)
 扩展：
-	各游戏项目创建自己的子类，如 WeaponData extends DataComponent，
+	各游戏项目创建自己的子类，如 WeaponData extends ResourceData，
 	再加 damage/attack_speed 等字段。
 '''
-## 所有框架数据 Resource 的基类
-class_name DataComponent
+class_name ResourceData
 
 #region 变量
 ## [b]唯一标识符[/b][br]

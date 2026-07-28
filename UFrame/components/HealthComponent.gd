@@ -17,11 +17,11 @@ extends Node
 class_name HealthComponent
 
 #region 变量
-## [b]最大生命值[/b]
+## [b]最大生命值[/b][br]
+## 如果同节点下有 StatComponent，将被覆盖（以 stat "max_hp" 为准）
 @export var max_hp: int = 100
 
-## [b]当前生命值[/b][br]
-## setter 自动触发 [signal hp_changed]
+## [b]当前生命值[/b]
 var hp: int = 100
 
 ## [b]无敌时间（秒）[/b][br]
@@ -29,6 +29,10 @@ var hp: int = 100
 @export var invincible_duration: float = 0.0
 
 var _invincible_timer: float = 0.0
+
+## [b]StatComponent 引用[/b][br]
+## 自动发现，无则 null
+var _stat_component: StatComponent = null
 #endregion
 
 #region 信号
@@ -46,8 +50,14 @@ signal died(source: Node)
 
 #region 生命周期
 func _ready() -> void:
-	hp = max_hp
-	# 自动注册到实体，方便查找
+	# 自动发现 StatComponent
+	var parent = get_parent()
+	if parent.has_node("StatComponent"):
+		_stat_component = parent.get_node("StatComponent")
+
+	hp = _get_effective_max_hp()
+
+	# 自动注册到实体
 	if get_parent().has_method("add_component"):
 		get_parent().add_component("health", self)
 
@@ -91,19 +101,34 @@ func heal(amount: int) -> void:
 	if amount <= 0:
 		return
 	var old = hp
-	hp = clampi(hp + amount, 0, max_hp)
+	hp = clampi(hp + amount, 0, _get_effective_max_hp())
 	hp_changed.emit(old, hp)
 
 ## [b]是否死亡[/b]
 func is_dead() -> bool:
 	return hp <= 0
 
+## [b]是否处于无敌状态[/b]
+func is_invincible() -> bool:
+	return _invincible_timer > 0
+
 ## [b]设置最大血量[/b][br]
 ## [br]参数：[br]
 ## [param v] : 新的最大血量[br]
 ## [param fill] : 是否同时补满当前血量
 func set_max_hp(v: int, fill: bool = true) -> void:
-	max_hp = v
+	if _stat_component:
+		_stat_component.set_base_stat("max_hp", float(v))
+	else:
+		max_hp = v
 	if fill:
-		hp = max_hp
+		hp = _get_effective_max_hp()
+
+## [b]获取有效最大血量[/b][br]
+## 有 StatComponent → 从 stat "max_hp" 读取（含装备加成）[br]
+## 无 StatComponent → 用 @export max_hp
+func _get_effective_max_hp() -> int:
+	if _stat_component:
+		return int(_stat_component.get_stat("max_hp", float(max_hp)))
+	return max_hp
 #endregion

@@ -61,16 +61,14 @@ static func random_vivid_color() -> Color:
 ## 随机字符串
 # ==========
 
-const _HEX_CHARS := "0123456789ABCDEF"
-const _ALPHA_CHARS := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-const _ALNUM_CHARS := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
 ## 随机 Hex 字符串，默认长度 8
 static func random_hex(length: int = 8) -> String:
 	var s := ""
 	for i in length:
-		s += _HEX_CHARS[randi() % 16]
+		s += ColorUtil.HEX_CHARS[randi() % 16]
 	return s
+
+const _ALNUM_CHARS := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 
 ## 随机字母数字字符串
@@ -99,3 +97,54 @@ static func with_seed(seed_value: int, callback: Callable):
 	# 无法恢复，GDScript 不暴露 rand 状态接口
 	# 建议：只在确定需要复现的场合用 set_seed + 手动重置
 	return result
+
+
+# ==========
+## 数值随机（从 MathUtil 迁移）
+# ==========
+
+## 随机整数 [from, to]
+static func random_int(from: int, to: int) -> int:
+	if from > to:
+		var t = from; from = to; to = t
+	return randi() % (to - from + 1) + from
+
+
+## 随机浮点数 [from, to)
+static func random_float(from: float, to: float) -> float:
+	if from > to:
+		var t = from; from = to; to = t
+	return randf() * (to - from) + from
+
+
+## 从数组随机取一个元素
+static func random_pick(array: Array):
+	if array.is_empty():
+		return null
+	return array[randi() % array.size()]
+
+
+## 加权随机返回下标，weights 和 array 长度一致
+static func pick_weighted(array: Array, weights: Array) -> int:
+	if array.is_empty() or weights.size() != array.size():
+		return -1
+	var total := 0
+	for w in weights:
+		total += int(w)
+	var r := randi() % total
+	var cumulative := 0
+	for i in array.size():
+		cumulative += int(weights[i])
+		if r < cumulative:
+			return i
+	return array.size() - 1
+
+
+## Fisher-Yates 洗牌（原地修改数组）
+static func shuffle(array: Array) -> void:
+	var n := array.size()
+	for i in range(n - 1, 0, -1):
+		var j := randi() % (i + 1)
+		var tmp = array[i]
+		array[i] = array[j]
+		array[j] = tmp

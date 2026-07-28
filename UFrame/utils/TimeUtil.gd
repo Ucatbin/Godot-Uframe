@@ -65,25 +65,3 @@ static func interval(node: Node, seconds: float, callback: Callable, times: int 
 	node.add_child(timer)
 	timer.start()
 	return timer
-
-
-# ==========
-## 帧率
-# ==========
-
-## 获取当前帧率（平滑值，基于最近 10 帧）
-static var _fps_samples: Array[float] = []
-static var _fps_index: int = 0
-
-static func get_smooth_fps() -> float:
-	var fps := Engine.get_frames_per_second()
-	if _fps_samples.size() < 10:
-		_fps_samples.append(fps)
-	else:
-		_fps_samples[_fps_index] = fps
-	_fps_index = (_fps_index + 1) % 10
-
-	var sum := 0.0
-	for v in _fps_samples:
-		sum += v
-	return sum / _fps_samples.size()

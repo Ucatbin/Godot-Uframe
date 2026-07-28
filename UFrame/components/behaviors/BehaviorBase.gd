@@ -35,6 +35,12 @@ func on_exit() -> void:
 ## [param _delta] : 帧间隔
 func on_update(_delta: float) -> void:
 	pass
+
+## [b]物理帧调用[/b][br]
+## enabled=true 时执行[br][br]
+## [param _delta] : 帧间隔
+func on_physics_update(_delta: float) -> void:
+	pass
 #endregion
 
 #region 生命周期
@@ -50,6 +56,10 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if enabled:
 		on_update(delta)
+
+func _physics_process(delta: float) -> void:
+	if enabled:
+		on_physics_update(delta)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_EXIT_TREE:

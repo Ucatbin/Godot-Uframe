@@ -3,7 +3,8 @@ class_name ColorUtil
 # ColorUtil.gd
 # 颜色工具，静态方法，直接 ColorUtil.xxx() 调用
 
-const _HEX_CHARS := "0123456789ABCDEFabcdef"
+## [b]公开的 Hex 字符集[/b]，供 RandomUtil 等复用
+const HEX_CHARS := "0123456789ABCDEF"
 
 
 # ==========

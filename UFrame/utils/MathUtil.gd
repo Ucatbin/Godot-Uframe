@@ -1,61 +1,9 @@
 class_name MathUtil
 
 # MathUtil.gd
-# 数学扩展工具，静态方法，直接 MathUtil.xxx() 调用
+# 数学扩展工具（纯数学运算），静态方法，直接 MathUtil.xxx() 调用
 # 不需要挂载，不需要 Autoload
-
-## 随机数
-# ==========
-
-## 随机整数 [from, to]
-static func random_int(from: int, to: int) -> int:
-	if from > to:
-		var t = from; from = to; to = t
-	return randi() % (to - from + 1) + from
-
-
-## 随机浮点数 [from, to)
-static func random_float(from: float, to: float) -> float:
-	if from > to:
-		var t = from; from = to; to = t
-	return randf() * (to - from) + from
-
-
-## 从数组随机取一个元素
-static func random_pick(array: Array):
-	if array.is_empty():
-		return null
-	return array[randi() % array.size()]
-
-
-## 加权随机，weights 和 array 长度一致，返回下标
-## 例：pick_weighted(["a","b","c"], [1,3,1]) → "b" 概率更高
-static func pick_weighted(array: Array, weights: Array) -> int:
-	if array.is_empty() or weights.size() != array.size():
-		return -1
-
-	var total := 0
-	for w in weights:
-		total += int(w)
-
-	var r := randi() % total
-	var cumulative := 0
-	for i in array.size():
-		cumulative += int(weights[i])
-		if r < cumulative:
-			return i
-	return array.size() - 1
-
-
-## Fisher-Yates 洗牌（原地修改数组）
-static func shuffle(array: Array) -> void:
-	var n := array.size()
-	for i in range(n - 1, 0, -1):
-		var j := randi() % (i + 1)
-		var tmp = array[i]
-		array[i] = array[j]
-		array[j] = tmp
-
+# 随机相关功能已迁移至 RandomUtil.gd
 
 # ==========
 ## 角度 / 方向

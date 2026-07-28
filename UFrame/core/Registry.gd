@@ -19,12 +19,12 @@ extends Node
 '''
 
 #region 信号
-## [b]注册表注册完成事件[/b][br][br]
+## [b]注册表注册完成时触发[/b][br][br]
 ## [param content_type] : 注册到的类型[br]
 ## [param content_id] : 唯一标识符
 signal content_registered(content_type: String, content_id: String)
 
-## [b]注册表注销完成事件[/b][br][br]
+## [b]注册表注销完成时触发[/b][br][br]
 ## [param content_type] : 注册到的类型[br]
 ## [param content_id] : 唯一标识符
 signal content_unregistered(content_type: String, content_id: String)
@@ -36,7 +36,7 @@ signal content_unregistered(content_type: String, content_id: String)
 var _registry: Dictionary = {}
 #endregion
 
-#region  注册/反注册
+#region 公共方法
 ## [b]注册内容到指定类型下[/b][br][br]
 ## [param content_type] : 内容类型，如 "weapon"、"enemy"、"item"、"skill"[br]
 ## [param content_id] : 唯一标识符，建议格式 [code]"modname:content_name"[/code][br]
@@ -99,9 +99,7 @@ func register_from_directory(content_type: String, dir_path: String, id_prefix: 
 
 		file_name = dir.get_next()
 	dir.list_dir_end()
-#endregion
 
-#region 工具方法
 ## [b]检查某个内容是否已注册[/b][br][br]
 ## [param content_type] : 内容类型[br]
 ## [param content_id] : 唯一标识符
@@ -139,7 +137,7 @@ func get_all(content_type: String) -> Dictionary:
 	return _registry[content_type].duplicate()
 #endregion
 
-#region 辅助方法
+#region 内部方法
 ## [color=cyan]返回 : [/color]查看已注册内容
 func _debug_print() -> void:
 	print("[Registry] 当前注册内容：")

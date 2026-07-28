@@ -16,7 +16,7 @@ extends Node
 var _subscribers: Dictionary = {}
 #endregion
 
-#region 发送/订阅/取消订阅
+#region 公共方法
 ## [b]发送一个全局事件，所有该事件的订阅者触发一次回调[/b][br][br]
 ## [param event_name] : 事件标识符，建议大驼峰，如 "PlayerDied"[br]
 ## [param data] : 附带数据，任意类型，通常是 [Dictionary][br]
@@ -96,7 +96,7 @@ func unsubscribe(event_name: String, callable: Callable) -> void:
 		_subscribers.erase(event_name)
 #endregion
 
-#region 辅助方法
+#region 内部方法
 ## [color=cyan]返回 : [/color]查看当前所有事件和订阅数
 func _debug_get_status() -> Dictionary:
 	var result := {}

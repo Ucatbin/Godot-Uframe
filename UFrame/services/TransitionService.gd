@@ -1,4 +1,4 @@
-extends CanvasLayer
+extends Node
 class_name TransitionService
 
 # TransitionService.gd
@@ -18,7 +18,8 @@ class_name TransitionService
 #   # 闪光过渡
 #   await TransitionService.flash(Color.WHITE, 0.3)
 
-@onready var color_rect: ColorRect = $ColorRect
+var _canvas_layer: CanvasLayer = null
+var _color_rect: ColorRect = null
 
 
 # =============================================================================
@@ -33,12 +34,7 @@ var fade_ease: Easing.Type = Easing.Type.IN_OUT_SINE
 # 初始化
 # =============================================================================
 func _ready() -> void:
-	# 确保最高层级
-	layer = 9999
-	# 初始透明
-	if color_rect:
-		color_rect.color = Color(fade_color.r, fade_color.g, fade_color.b, 0.0)
-		color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
 # =============================================================================
@@ -51,8 +47,8 @@ func _ready() -> void:
 func fade_out(duration: float = -1.0, color: Color = Color(-1, 0, 0, 0)) -> void:
 	var dur := duration if duration > 0.0 else fade_duration
 	var col := fade_color if color.r < 0.0 else color
-	if color_rect == null:
-		_create_color_rect()
+	if _color_rect == null:
+		_create_overlay()
 	
 	await _do_fade(
 		Color(col.r, col.g, col.b, 0.0),
@@ -66,8 +62,8 @@ func fade_out(duration: float = -1.0, color: Color = Color(-1, 0, 0, 0)) -> void
 func fade_in(duration: float = -1.0, color: Color = Color(-1, 0, 0, 0)) -> void:
 	var dur := duration if duration > 0.0 else fade_duration
 	var col := fade_color if color.r < 0.0 else color
-	if color_rect == null:
-		_create_color_rect()
+	if _color_rect == null:
+		_create_overlay()
 	
 	await _do_fade(
 		Color(col.r, col.g, col.b, 1.0),
@@ -131,8 +127,8 @@ func change_scene_async(target: String, duration: float = -1.0, color: Color = C
 
 ## 闪光过渡（快速闪白/闪黑 → 切换场景 → 恢复）
 func flash(flash_color: Color = Color.WHITE, duration: float = 0.3) -> void:
-	if color_rect == null:
-		_create_color_rect()
+	if _color_rect == null:
+		_create_overlay()
 	
 	var half_dur := duration * 0.5
 	await _do_fade(Color(flash_color.r, flash_color.g, flash_color.b, 0.0), Color(flash_color.r, flash_color.g, flash_color.b, 1.0), half_dur, Easing.Type.OUT_EXPO)
@@ -162,30 +158,30 @@ func configure(color: Color = Color.BLACK, duration: float = 0.4, ease_type: Eas
 # 内部方法
 # =============================================================================
 
-func _create_color_rect() -> void:
-	color_rect = ColorRect.new()
-	color_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	color_rect.color = Color(fade_color.r, fade_color.g, fade_color.b, 0.0)
-	color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(color_rect)
+func _create_overlay() -> void:
+	_canvas_layer = CanvasLayer.new()
+	_canvas_layer.layer = 9999
+	add_child(_canvas_layer)
+
+	_color_rect = ColorRect.new()
+	_color_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_color_rect.color = Color(fade_color.r, fade_color.g, fade_color.b, 0.0)
+	_color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_canvas_layer.add_child(_color_rect)
 
 
 func _do_fade(from: Color, to: Color, duration: float, ease_type: Easing.Type) -> void:
 	var tween := create_tween()
 	tween.set_ease(Tween.EASE_IN_OUT)
 	tween.set_trans(Tween.TRANS_LINEAR)
-	
-	# 用自定义缓动曲线手动插值
-	var elapsed := 0.0
+
 	tween.tween_method(
 		func(t: float):
-			elapsed += get_process_delta_time()
-			var progress := clampf(elapsed / maxf(duration, 0.001), 0.0, 1.0)
-			var eased := Easing.ease(ease_type, progress)
-			color_rect.modulate = from.lerp(to, eased),
+			var eased := Easing.ease(ease_type, t)
+			_color_rect.modulate = from.lerp(to, eased),
 		0.0, 1.0, duration
 	)
 	await tween.finished
 
 	# 确保最终状态
-	color_rect.modulate = to
+	_color_rect.modulate = to

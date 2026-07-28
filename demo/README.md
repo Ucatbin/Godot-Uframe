@@ -68,7 +68,7 @@ func _on_hurt(data: Dictionary) -> void:
 **定义武器数据（weapon_fire_sword.tres）：**
 ```
 # 在 Godot 编辑器中：
-# 1. 新建 Resource，类型选 DataComponent
+# 1. 新建 Resource，类型选 ResourceData
 # 2. 保存为 weapon_fire_sword.tres
 # 3. 填写 id="weapon:fire_sword", display_name="火焰剑", tier=1
 ```
