@@ -48,8 +48,8 @@ enum Op {
 @export var source_name: String = ""
 
 ## [b]持续时间（秒）[/b][br]
-## 0 表示永久
-@export var duration: float = 0.0
+## -1 表示永久，0 表示立即过期
+@export var duration: float = -1.0
 #endregion
 
 #region 公开方法
@@ -81,5 +81,7 @@ func revert(current_value: float) -> float:
 
 ## [b]是否过期[/b]
 func is_expired(elapsed: float) -> bool:
-	return duration > 0.0 and elapsed >= duration
+	if duration < 0.0:
+		return false          # -1 = 永久
+	return elapsed >= duration
 #endregion

@@ -55,7 +55,7 @@ signal modifier_removed(mod: StatModifier)
 ## [param stat_name] : 属性名，如 "attack"、"speed"[br]
 ## [param base] : 基准值（若 base_stats 中不存在则用此值）
 func get_stat(stat_name: String, base: float = 0.0) -> float:
-	var current := base_stats.get(stat_name, base)
+	var current: float = base_stats.get(stat_name, base)
 
 	# 按优先级排序（数值越小越先计算）
 	var sorted := _modifiers.duplicate()
