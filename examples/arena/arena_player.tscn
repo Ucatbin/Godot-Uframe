@@ -1,0 +1,53 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://examples/arena/arena_player.gd" id="1_player"]
+[ext_resource type="Script" path="res://addons/uframe/components/HealthComponent.gd" id="2_health"]
+[ext_resource type="Script" path="res://addons/uframe/components/TeamComponent.gd" id="3_team"]
+[ext_resource type="Script" path="res://addons/uframe/components/HurtboxComponent.gd" id="4_hurtbox"]
+[ext_resource type="Script" path="res://addons/uframe/components/behaviors/BehaviorManager.gd" id="5_behavior_manager"]
+[ext_resource type="Script" path="res://examples/arena/arena_player_movement_behavior.gd" id="6_movement"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+radius = 15.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hurtbox"]
+radius = 15.0
+
+[node name="ArenaPlayer" type="CharacterBody2D" groups=["arena_player"]]
+z_index = 5
+collision_layer = 0
+collision_mask = 0
+script = ExtResource("1_player")
+
+[node name="BodyCollision" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_body")
+
+[node name="AimPivot" type="Node2D" parent="."]
+
+[node name="Muzzle" type="Marker2D" parent="AimPivot"]
+position = Vector2(27, 0)
+
+[node name="BehaviorManager" type="Node" parent="."]
+script = ExtResource("5_behavior_manager")
+
+[node name="Movement" type="Node" parent="BehaviorManager"]
+script = ExtResource("6_movement")
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("2_health")
+max_hp = 8
+invincible_duration = 0.45
+
+[node name="TeamComponent" type="Node" parent="."]
+script = ExtResource("3_team")
+team_id = 1
+
+[node name="HurtboxComponent" type="Area2D" parent="."]
+collision_layer = 1
+collision_mask = 8
+script = ExtResource("4_hurtbox")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HurtboxComponent"]
+shape = SubResource("CircleShape2D_hurtbox")
+
+[connection signal="damaged" from="HealthComponent" to="." method="_on_health_component_damaged"]

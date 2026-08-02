@@ -1,0 +1,74 @@
+[gd_resource type="Resource" script_class="UFrameLootTable" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://addons/uframe/resources/LootTable.gd" id="1_table"]
+[ext_resource type="Script" path="res://addons/uframe/resources/LootEntry.gd" id="2_entry"]
+
+[sub_resource type="Resource" id="LootEntry_coin"]
+script = ExtResource("2_entry")
+content_id = &"demo:coin"
+weight = 10.0
+min_count = 2
+max_count = 5
+
+[sub_resource type="Resource" id="LootEntry_gem"]
+script = ExtResource("2_entry")
+content_id = &"demo:gem"
+weight = 3.0
+min_count = 1
+max_count = 2
+
+[sub_resource type="Resource" id="LootEntry_crown"]
+script = ExtResource("2_entry")
+content_id = &"demo:crown"
+weight = 0.7
+min_count = 1
+max_count = 1
+
+[sub_resource type="Resource" id="LootEntry_wood"]
+script = ExtResource("2_entry")
+content_id = &"demo:wood"
+weight = 8.0
+min_count = 4
+max_count = 12
+
+[sub_resource type="Resource" id="LootEntry_stone"]
+script = ExtResource("2_entry")
+content_id = &"demo:stone"
+weight = 7.0
+min_count = 3
+max_count = 10
+
+[sub_resource type="Resource" id="LootEntry_potion"]
+script = ExtResource("2_entry")
+content_id = &"demo:potion"
+weight = 2.5
+min_count = 1
+max_count = 3
+
+[sub_resource type="Resource" id="LootEntry_bomb"]
+script = ExtResource("2_entry")
+content_id = &"demo:bomb"
+weight = 1.8
+min_count = 1
+max_count = 2
+
+[sub_resource type="Resource" id="LootEntry_sword"]
+script = ExtResource("2_entry")
+content_id = &"demo:sword"
+weight = 0.8
+min_count = 1
+max_count = 1
+
+[sub_resource type="Resource" id="LootEntry_shield"]
+script = ExtResource("2_entry")
+content_id = &"demo:shield"
+weight = 0.8
+min_count = 1
+max_count = 1
+
+[resource]
+script = ExtResource("1_table")
+entries = Array[ExtResource("2_entry")]([SubResource("LootEntry_coin"), SubResource("LootEntry_gem"), SubResource("LootEntry_crown"), SubResource("LootEntry_wood"), SubResource("LootEntry_stone"), SubResource("LootEntry_potion"), SubResource("LootEntry_bomb"), SubResource("LootEntry_sword"), SubResource("LootEntry_shield")])
+no_drop_weight = 5.0
+pity_count = 4
+pity_entry_index = 2

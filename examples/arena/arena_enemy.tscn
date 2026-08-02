@@ -1,0 +1,56 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://examples/arena/arena_enemy.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://addons/uframe/components/HealthComponent.gd" id="2_health"]
+[ext_resource type="Script" path="res://addons/uframe/components/TeamComponent.gd" id="3_team"]
+[ext_resource type="Script" path="res://addons/uframe/components/HurtboxComponent.gd" id="4_hurtbox"]
+[ext_resource type="Script" path="res://addons/uframe/components/HitboxComponent.gd" id="5_hitbox"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+radius = 15.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hurtbox"]
+radius = 16.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_contact"]
+radius = 19.0
+
+[node name="ArenaEnemy" type="CharacterBody2D" groups=["arena_enemy"]]
+z_index = 4
+collision_layer = 0
+collision_mask = 0
+script = ExtResource("1_enemy")
+
+[node name="BodyCollision" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_body")
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("2_health")
+max_hp = 3
+
+[node name="TeamComponent" type="Node" parent="."]
+script = ExtResource("3_team")
+team_id = 2
+
+[node name="HurtboxComponent" type="Area2D" parent="."]
+collision_layer = 2
+collision_mask = 4
+script = ExtResource("4_hurtbox")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HurtboxComponent"]
+shape = SubResource("CircleShape2D_hurtbox")
+
+[node name="ContactHitbox" type="Area2D" parent="."]
+collision_layer = 8
+collision_mask = 1
+script = ExtResource("5_hitbox")
+damage = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ContactHitbox"]
+shape = SubResource("CircleShape2D_contact")
+
+[node name="ContactAttackTimer" type="Timer" parent="."]
+wait_time = 0.5
+
+[connection signal="died" from="HealthComponent" to="." method="_on_health_component_died"]
+[connection signal="timeout" from="ContactAttackTimer" to="." method="_on_contact_attack_timer_timeout"]

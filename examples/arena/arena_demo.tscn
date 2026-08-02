@@ -1,0 +1,140 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://examples/arena/arena_demo.gd" id="1_demo"]
+[ext_resource type="PackedScene" path="res://examples/arena/arena_player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://examples/arena/arena_enemy.tscn" id="3_enemy"]
+[ext_resource type="PackedScene" path="res://examples/arena/arena_bullet.tscn" id="4_bullet"]
+[ext_resource type="PackedScene" path="res://examples/common/burst_effect.tscn" id="5_effect"]
+[ext_resource type="Script" path="res://addons/uframe/components/PoolComponent.gd" id="6_pool"]
+
+[node name="ArenaDemo" type="Node2D"]
+script = ExtResource("1_demo")
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="Player" parent="World" instance=ExtResource("2_player")]
+position = Vector2(480, 320)
+
+[node name="EnemyPool" type="Node" parent="World"]
+script = ExtResource("6_pool")
+pool_scene = ExtResource("3_enemy")
+initial_size = 8
+maximum_size = 40
+
+[node name="BulletPool" type="Node" parent="World"]
+script = ExtResource("6_pool")
+pool_scene = ExtResource("4_bullet")
+initial_size = 24
+maximum_size = 64
+
+[node name="EffectPool" type="Node" parent="World"]
+script = ExtResource("6_pool")
+pool_scene = ExtResource("5_effect")
+initial_size = 18
+maximum_size = 48
+overflow_policy = 1
+
+[node name="MainCamera" type="Camera2D" parent="." groups=["main_camera"]]
+position = Vector2(480, 320)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="TopMargin" type="MarginContainer" parent="HUD"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 86.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+
+[node name="TopRow" type="HBoxContainer" parent="HUD/TopMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="MainPanel" type="PanelContainer" parent="HUD/TopMargin/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MainColumn" type="VBoxContainer" parent="HUD/TopMargin/TopRow/MainPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Heading" type="HBoxContainer" parent="HUD/TopMargin/TopRow/MainPanel/MainColumn"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="HUD/TopMargin/TopRow/MainPanel/MainColumn/Heading"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "生存竞技场"
+
+[node name="ControlsChip" type="Label" parent="HUD/TopMargin/TopRow/MainPanel/MainColumn/Heading"]
+custom_minimum_size = Vector2(138, 0)
+layout_mode = 2
+text = "WASD · AUTO FIRE"
+
+[node name="HealthRow" type="HBoxContainer" parent="HUD/TopMargin/TopRow/MainPanel/MainColumn"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="HealthLabel" type="Label" parent="HUD/TopMargin/TopRow/MainPanel/MainColumn/HealthRow"]
+custom_minimum_size = Vector2(86, 0)
+layout_mode = 2
+text = "生命  8 / 8"
+
+[node name="HealthBar" type="ProgressBar" parent="HUD/TopMargin/TopRow/MainPanel/MainColumn/HealthRow"]
+custom_minimum_size = Vector2(210, 12)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 8.0
+value = 8.0
+show_percentage = false
+
+[node name="StatsPanel" type="PanelContainer" parent="HUD/TopMargin/TopRow"]
+custom_minimum_size = Vector2(270, 0)
+layout_mode = 2
+
+[node name="StatsColumn" type="VBoxContainer" parent="HUD/TopMargin/TopRow/StatsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="ScoreRow" type="HBoxContainer" parent="HUD/TopMargin/TopRow/StatsPanel/StatsColumn"]
+layout_mode = 2
+
+[node name="ScoreLabel" type="Label" parent="HUD/TopMargin/TopRow/StatsPanel/StatsColumn/ScoreRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "击败  0"
+
+[node name="ThreatLabel" type="Label" parent="HUD/TopMargin/TopRow/StatsPanel/StatsColumn/ScoreRow"]
+custom_minimum_size = Vector2(66, 0)
+layout_mode = 2
+text = "威胁 1"
+
+[node name="RuntimeLabel" type="Label" parent="HUD/TopMargin/TopRow/StatsPanel/StatsColumn"]
+layout_mode = 2
+text = "敌人 0/8 · 子弹 0/24 · 特效 0/18 · Esc 返回"
+
+[node name="MessagePanel" type="PanelContainer" parent="HUD"]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -270.0
+offset_top = -74.0
+offset_right = 270.0
+offset_bottom = -26.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="MessageLabel" type="Label" parent="HUD/MessagePanel"]
+layout_mode = 2
+text = "移动起来"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[connection signal="instance_created" from="World/EnemyPool" to="." method="_on_enemy_pool_instance_created"]
+[connection signal="instance_created" from="World/BulletPool" to="." method="_on_bullet_pool_instance_created"]

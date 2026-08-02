@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://examples/spider/spider_card.gd" id="1_card"]
+
+[node name="SpiderCard" type="Control"]
+custom_minimum_size = Vector2(76, 106)
+offset_right = 76.0
+offset_bottom = 106.0
+focus_mode = 1
+mouse_default_cursor_shape = 2
+script = ExtResource("1_card")

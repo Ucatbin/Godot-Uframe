@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="LootDemoItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://examples/loot/loot_demo_item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"demo:shield"
+display_name = "木盾"
+description = "装备，不可堆叠"
+tags = Array[StringName]([&"equipment"])
+category = &"equipment"
+category_order = 2
+display_color = Color(0.709804, 0.545098, 0.411765, 1)
+icon_kind = &"shield"

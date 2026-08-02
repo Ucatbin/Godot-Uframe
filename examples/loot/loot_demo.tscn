@@ -1,0 +1,290 @@
+[gd_scene load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://examples/loot/loot_demo.gd" id="1_demo"]
+[ext_resource type="Script" path="res://examples/common/example_backdrop.gd" id="2_backdrop"]
+[ext_resource type="Script" path="res://addons/uframe/components/InventoryComponent.gd" id="3_inventory"]
+[ext_resource type="Resource" path="res://examples/loot/demo_loot_table.tres" id="4_table"]
+[ext_resource type="PackedScene" path="res://examples/loot/inventory_slot_button.tscn" id="5_slot"]
+[ext_resource type="Script" path="res://examples/loot/loot_demo_item_data.gd" id="6_item_data"]
+[ext_resource type="Resource" path="res://examples/loot/items/coin.tres" id="7_coin"]
+[ext_resource type="Resource" path="res://examples/loot/items/gem.tres" id="8_gem"]
+[ext_resource type="Resource" path="res://examples/loot/items/crown.tres" id="9_crown"]
+[ext_resource type="Resource" path="res://examples/loot/items/wood.tres" id="10_wood"]
+[ext_resource type="Resource" path="res://examples/loot/items/stone.tres" id="11_stone"]
+[ext_resource type="Resource" path="res://examples/loot/items/potion.tres" id="12_potion"]
+[ext_resource type="Resource" path="res://examples/loot/items/bomb.tres" id="13_bomb"]
+[ext_resource type="Resource" path="res://examples/loot/items/sword.tres" id="14_sword"]
+[ext_resource type="Resource" path="res://examples/loot/items/shield.tres" id="15_shield"]
+
+[node name="LootDemo" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_demo")
+loot_table = ExtResource("4_table")
+item_definitions = Array[ExtResource("6_item_data")]([ExtResource("7_coin"), ExtResource("8_gem"), ExtResource("9_crown"), ExtResource("10_wood"), ExtResource("11_stone"), ExtResource("12_potion"), ExtResource("13_bomb"), ExtResource("14_sword"), ExtResource("15_shield")])
+slot_scene = ExtResource("5_slot")
+
+[node name="Backdrop" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_backdrop")
+accent = Color(0.4, 0.85098, 0.627451, 1)
+
+[node name="Player" type="Node" parent="."]
+
+[node name="InventoryComponent" type="Node" parent="Player"]
+unique_name_in_owner = true
+script = ExtResource("3_inventory")
+slot_count = 64
+max_stack_size = 64
+stack_limits = {
+&"demo:bomb": 16,
+&"demo:coin": 64,
+&"demo:crown": 1,
+&"demo:gem": 16,
+&"demo:potion": 16,
+&"demo:shield": 1,
+&"demo:stone": 64,
+&"demo:sword": 1,
+&"demo:wood": 64
+}
+
+[node name="MainMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 20
+
+[node name="ContentRow" type="HBoxContainer" parent="MainMargin"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="RollPanel" type="PanelContainer" parent="MainMargin/ContentRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(292, 0)
+layout_mode = 2
+
+[node name="RollColumn" type="VBoxContainer" parent="MainMargin/ContentRow/RollPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Heading" type="HBoxContainer" parent="MainMargin/ContentRow/RollPanel/RollColumn"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="MainMargin/ContentRow/RollPanel/RollColumn/Heading"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.929412, 0.956863, 1, 1)
+theme_override_font_sizes/font_size = 27
+text = "掉落工坊"
+
+[node name="BackButton" type="Button" parent="MainMargin/ContentRow/RollPanel/RollColumn/Heading"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(78, 34)
+layout_mode = 2
+focus_mode = 0
+text = "Esc 返回"
+
+[node name="HelpLabel" type="Label" parent="MainMargin/ContentRow/RollPanel/RollColumn"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.627451, 0.721569, 1)
+theme_override_font_sizes/font_size = 14
+text = "抽取结果会进入右侧背包；连续 4 次未掉落触发王冠保底。"
+autowrap_mode = 2
+
+[node name="ResultLabel" type="Label" parent="MainMargin/ContentRow/RollPanel/RollColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 62)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.929412, 0.956863, 1, 1)
+theme_override_font_sizes/font_size = 17
+text = "等待初始化……"
+autowrap_mode = 2
+
+[node name="PityRow" type="HBoxContainer" parent="MainMargin/ContentRow/RollPanel/RollColumn"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PityLabel" type="Label" parent="MainMargin/ContentRow/RollPanel/RollColumn/PityRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.627451, 0.721569, 1)
+theme_override_font_sizes/font_size = 12
+text = "保底 0 / 4"
+
+[node name="PityBar" type="ProgressBar" parent="MainMargin/ContentRow/RollPanel/RollColumn/PityRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+size_flags_horizontal = 3
+show_percentage = false
+
+[node name="RollButton" type="Button" parent="MainMargin/ContentRow/RollPanel/RollColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+focus_mode = 0
+text = "抽取一次"
+
+[node name="Actions" type="GridContainer" parent="MainMargin/ContentRow/RollPanel/RollColumn"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="SaveButton" type="Button" parent="MainMargin/ContentRow/RollPanel/RollColumn/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(122, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "保存"
+
+[node name="LoadButton" type="Button" parent="MainMargin/ContentRow/RollPanel/RollColumn/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(122, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "读取"
+
+[node name="SortButton" type="Button" parent="MainMargin/ContentRow/RollPanel/RollColumn/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(122, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "自动整理"
+
+[node name="ResetButton" type="Button" parent="MainMargin/ContentRow/RollPanel/RollColumn/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(122, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "重置示例"
+
+[node name="ClearButton" type="Button" parent="MainMargin/ContentRow/RollPanel/RollColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+focus_mode = 0
+text = "清空背包"
+
+[node name="DetailPanel" type="PanelContainer" parent="MainMargin/ContentRow/RollPanel/RollColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ItemDetail" type="Label" parent="MainMargin/ContentRow/RollPanel/RollColumn/DetailPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.627451, 0.721569, 1)
+theme_override_font_sizes/font_size = 13
+text = "悬停右侧物品，可在这里查看分类、堆叠上限与说明。"
+autowrap_mode = 2
+
+[node name="InventoryPanel" type="PanelContainer" parent="MainMargin/ContentRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="InventoryColumn" type="VBoxContainer" parent="MainMargin/ContentRow/InventoryPanel"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Heading" type="HBoxContainer" parent="MainMargin/ContentRow/InventoryPanel/InventoryColumn"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="MainMargin/ContentRow/InventoryPanel/InventoryColumn/Heading"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.929412, 0.956863, 1, 1)
+theme_override_font_sizes/font_size = 25
+text = "64 格背包"
+
+[node name="MaterialChip" type="Label" parent="MainMargin/ContentRow/InventoryPanel/InventoryColumn/Heading"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "材料 · 64"
+horizontal_alignment = 1
+
+[node name="ConsumableChip" type="Label" parent="MainMargin/ContentRow/InventoryPanel/InventoryColumn/Heading"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "消耗品 · 16"
+horizontal_alignment = 1
+
+[node name="EquipmentChip" type="Label" parent="MainMargin/ContentRow/InventoryPanel/InventoryColumn/Heading"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "装备 · 1"
+horizontal_alignment = 1
+
+[node name="InventorySummary" type="Label" parent="MainMargin/ContentRow/InventoryPanel/InventoryColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.627451, 0.721569, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="OperationHelp" type="Label" parent="MainMargin/ContentRow/InventoryPanel/InventoryColumn"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.560784, 0.627451, 0.721569, 1)
+theme_override_font_sizes/font_size = 13
+text = "拖拽：移动 / 合并 / 交换　·　右键：拿 1 个　·　Ctrl + 右键：拿一半　·　左键：放下"
+autowrap_mode = 2
+
+[node name="GridCenter" type="CenterContainer" parent="MainMargin/ContentRow/InventoryPanel/InventoryColumn"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SlotGrid" type="GridContainer" parent="MainMargin/ContentRow/InventoryPanel/InventoryColumn/GridCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 5
+columns = 8
+
+[node name="CursorLayer" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="CursorLabel" type="Label" parent="CursorLayer"]
+unique_name_in_owner = true
+visible = false
+offset_right = 40.0
+offset_bottom = 23.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.929412, 0.956863, 1, 1)
+theme_override_font_sizes/font_size = 15
+
+[connection signal="slot_changed" from="Player/InventoryComponent" to="." method="_refresh_slot"]
+[connection signal="inventory_changed" from="Player/InventoryComponent" to="." method="_refresh_summary"]
+[connection signal="pressed" from="MainMargin/ContentRow/RollPanel/RollColumn/Heading/BackButton" to="." method="_return_to_menu"]
+[connection signal="pressed" from="MainMargin/ContentRow/RollPanel/RollColumn/RollButton" to="." method="_roll_once"]
+[connection signal="pressed" from="MainMargin/ContentRow/RollPanel/RollColumn/Actions/SaveButton" to="." method="_save_game"]
+[connection signal="pressed" from="MainMargin/ContentRow/RollPanel/RollColumn/Actions/LoadButton" to="." method="_load_game"]
+[connection signal="pressed" from="MainMargin/ContentRow/RollPanel/RollColumn/Actions/SortButton" to="." method="_sort_inventory"]
+[connection signal="pressed" from="MainMargin/ContentRow/RollPanel/RollColumn/Actions/ResetButton" to="." method="_seed_inventory"]
+[connection signal="pressed" from="MainMargin/ContentRow/RollPanel/RollColumn/ClearButton" to="." method="_clear_inventory"]

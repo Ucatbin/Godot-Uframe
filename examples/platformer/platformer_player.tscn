@@ -1,0 +1,65 @@
+[gd_scene format=3 uid="uid://glajrnyynvfm"]
+
+[ext_resource type="Script" uid="uid://c1acbg5gtgga4" path="res://examples/platformer/platformer_player.gd" id="1_player"]
+[ext_resource type="Script" uid="uid://dvy3m20rsxkdc" path="res://addons/uframe/components/state_machine/StateMachine.gd" id="2_machine"]
+[ext_resource type="Script" uid="uid://d2vcqefqwlmv" path="res://examples/platformer/states/idle_state.gd" id="3_idle"]
+[ext_resource type="Script" uid="uid://bp37r7qfp4mn8" path="res://examples/platformer/states/run_state.gd" id="4_run"]
+[ext_resource type="Script" uid="uid://d2pircbnrpc2a" path="res://examples/platformer/states/air_state.gd" id="5_air"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_player"]
+size = Vector2(26, 38)
+
+[node name="PlatformerPlayer" type="CharacterBody2D" unique_id=1865329814]
+floor_snap_length = 4.0
+script = ExtResource("1_player")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1366309146]
+position = Vector2(0, -2)
+shape = SubResource("RectangleShape2D_player")
+
+[node name="Shadow" type="Polygon2D" parent="." unique_id=948397643]
+show_behind_parent = true
+color = Color(0, 0, 0, 0.24)
+polygon = PackedVector2Array(-17, 19, -14, 16, -7, 14, 7, 14, 14, 16, 17, 19, 14, 22, 7, 24, -7, 24, -14, 22)
+
+[node name="VisualRoot" type="Node2D" parent="." unique_id=415311146]
+position = Vector2(0, 17)
+scale = Vector2(1.22, 1.22)
+
+[node name="Body" type="Polygon2D" parent="VisualRoot" unique_id=1113861150]
+color = Color(1, 0.792157, 0.439216, 1)
+polygon = PackedVector2Array(-13, -34, 13, -34, 13, 0, -13, 0)
+
+[node name="Highlight" type="Polygon2D" parent="VisualRoot" unique_id=409019569]
+color = Color(1, 0.870588, 0.639216, 1)
+polygon = PackedVector2Array(-10, -31, 10, -31, 10, -25, -10, -25)
+
+[node name="EyeLeft" type="Polygon2D" parent="VisualRoot" unique_id=1750469154]
+color = Color(0.0784314, 0.129412, 0.2, 1)
+polygon = PackedVector2Array(-7, -23, -3, -23, -3, -19, -7, -19)
+
+[node name="EyeRight" type="Polygon2D" parent="VisualRoot" unique_id=2110204936]
+color = Color(0.0784314, 0.129412, 0.2, 1)
+polygon = PackedVector2Array(3, -23, 7, -23, 7, -19, 3, -19)
+
+[node name="Mouth" type="Line2D" parent="VisualRoot" unique_id=305586588]
+points = PackedVector2Array(-5, -11, 5, -11)
+width = 2.0
+default_color = Color(0.0784314, 0.129412, 0.2, 1)
+antialiased = true
+
+[node name="StateMachine" type="Node" parent="." unique_id=528966343]
+script = ExtResource("2_machine")
+initial_state = &"air"
+
+[node name="Idle" type="Node" parent="StateMachine" unique_id=1649496777]
+script = ExtResource("3_idle")
+state_name = &"idle"
+
+[node name="Run" type="Node" parent="StateMachine" unique_id=426669008]
+script = ExtResource("4_run")
+state_name = &"run"
+
+[node name="Air" type="Node" parent="StateMachine" unique_id=1753370415]
+script = ExtResource("5_air")
+state_name = &"air"

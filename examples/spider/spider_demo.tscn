@@ -1,0 +1,357 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://examples/spider/spider_demo.gd" id="1_demo"]
+[ext_resource type="PackedScene" path="res://examples/spider/spider_card.tscn" id="2_card"]
+[ext_resource type="Script" path="res://examples/spider/spider_feedback.gd" id="3_feedback"]
+
+[node name="SpiderDemo" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_demo")
+card_scene = ExtResource("2_card")
+
+[node name="BoardStage" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 94.0
+offset_right = -12.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+
+[node name="TableSurface" type="Panel" parent="BoardStage"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Tableau" type="HBoxContainer" parent="BoardStage"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = 15.0
+offset_right = -18.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="Column01" type="Panel" parent="BoardStage/Tableau"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Column02" type="Panel" parent="BoardStage/Tableau"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Column03" type="Panel" parent="BoardStage/Tableau"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Column04" type="Panel" parent="BoardStage/Tableau"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Column05" type="Panel" parent="BoardStage/Tableau"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Column06" type="Panel" parent="BoardStage/Tableau"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Column07" type="Panel" parent="BoardStage/Tableau"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Column08" type="Panel" parent="BoardStage/Tableau"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Column09" type="Panel" parent="BoardStage/Tableau"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Column10" type="Panel" parent="BoardStage/Tableau"]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="CardLayer" type="Control" parent="BoardStage"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+
+[node name="DragLayer" type="Control" parent="BoardStage"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="FeedbackOverlay" type="Control" parent="BoardStage"]
+unique_name_in_owner = true
+z_index = 2000
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_feedback")
+
+[node name="HeaderMargin" type="MarginContainer" parent="."]
+z_index = 3000
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 88.0
+grow_horizontal = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 14
+
+[node name="HeaderPanel" type="PanelContainer" parent="HeaderMargin"]
+layout_mode = 2
+
+[node name="HeaderRow" type="HBoxContainer" parent="HeaderMargin/HeaderPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleBlock" type="VBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow"]
+custom_minimum_size = Vector2(192, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Title" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock"]
+layout_mode = 2
+text = "午夜蛛网"
+
+[node name="DifficultyRow" type="HBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="DifficultyLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock/DifficultyRow"]
+layout_mode = 2
+text = "难度"
+vertical_alignment = 1
+
+[node name="OneSuitButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock/DifficultyRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 24)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "单色"
+
+[node name="TwoSuitButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock/DifficultyRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 24)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "双色"
+
+[node name="FourSuitButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock/DifficultyRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 24)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "四色"
+
+[node name="Stats" type="VBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow"]
+custom_minimum_size = Vector2(142, 0)
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="MovesLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "步数  0"
+
+[node name="ScoreLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "分数  500"
+
+[node name="StockLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "剩余发牌  5"
+
+[node name="CompletedBlock" type="VBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow"]
+custom_minimum_size = Vector2(166, 0)
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="CompletedLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "完整序列  0 / 8"
+
+[node name="Completed" type="HBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Run01" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+custom_minimum_size = Vector2(17, 24)
+layout_mode = 2
+
+[node name="Run02" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+custom_minimum_size = Vector2(17, 24)
+layout_mode = 2
+
+[node name="Run03" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+custom_minimum_size = Vector2(17, 24)
+layout_mode = 2
+
+[node name="Run04" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+custom_minimum_size = Vector2(17, 24)
+layout_mode = 2
+
+[node name="Run05" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+custom_minimum_size = Vector2(17, 24)
+layout_mode = 2
+
+[node name="Run06" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+custom_minimum_size = Vector2(17, 24)
+layout_mode = 2
+
+[node name="Run07" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+custom_minimum_size = Vector2(17, 24)
+layout_mode = 2
+
+[node name="Run08" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+custom_minimum_size = Vector2(17, 24)
+layout_mode = 2
+
+[node name="Actions" type="HBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="DealButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(86, 0)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "发牌"
+
+[node name="UndoButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "撤销"
+
+[node name="NewGameButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 0)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "重开"
+
+[node name="BackButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(54, 0)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "返回"
+
+[node name="MessagePanel" type="PanelContainer" parent="."]
+z_index = 3100
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -290.0
+offset_top = -48.0
+offset_right = 290.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="MessageLabel" type="Label" parent="MessagePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "拖拽或右键自动移动 · 同花色目标优先 · 1 / 2 / 4 切换难度"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BigFeedback" type="Label" parent="."]
+unique_name_in_owner = true
+z_index = 4000
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -230.0
+offset_top = -46.0
+offset_right = 230.0
+offset_bottom = 46.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+text = "完整序列"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ScreenFlash" type="ColorRect" parent="."]
+unique_name_in_owner = true
+z_index = 4090
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.454902, 0.941176, 0.756863, 0)

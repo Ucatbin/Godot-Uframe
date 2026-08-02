@@ -1,0 +1,287 @@
+[gd_scene format=3 uid="uid://d2hlyo0tkch1y"]
+
+[ext_resource type="Script" uid="uid://ydarhld3ygov" path="res://examples/platformer/platformer_demo.gd" id="1_demo"]
+[ext_resource type="PackedScene" uid="uid://glajrnyynvfm" path="res://examples/platformer/platformer_player.tscn" id="2_player"]
+[ext_resource type="Script" uid="uid://g75vow2t55p2" path="res://addons/uframe/components/PoolComponent.gd" id="3_pool"]
+[ext_resource type="PackedScene" path="res://examples/common/burst_effect.tscn" id="4_burst"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ground"]
+size = Vector2(960, 70)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_step_1"]
+size = Vector2(160, 22)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_step_2"]
+size = Vector2(138, 22)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_step_3"]
+size = Vector2(148, 22)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_step_4"]
+size = Vector2(168, 22)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_goal"]
+size = Vector2(64, 92)
+
+[node name="PlatformerDemo" type="Node2D" unique_id=1849294346]
+script = ExtResource("1_demo")
+
+[node name="DemoCamera" type="Camera2D" parent="." unique_id=2098641922 groups=["main_camera"]]
+unique_name_in_owner = true
+position = Vector2(480, 320)
+
+[node name="World" type="Node2D" parent="." unique_id=1157172773]
+
+[node name="EffectPool" type="Node" parent="World" unique_id=1710239004]
+unique_name_in_owner = true
+script = ExtResource("3_pool")
+pool_scene = ExtResource("4_burst")
+initial_size = 14
+maximum_size = 32
+overflow_policy = 1
+
+[node name="Ground" type="StaticBody2D" parent="World" unique_id=1934931810]
+position = Vector2(480, 605)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Ground" unique_id=1869894196]
+shape = SubResource("RectangleShape2D_ground")
+
+[node name="Shadow" type="Polygon2D" parent="World/Ground" unique_id=1853750616]
+position = Vector2(0, 7)
+color = Color(0, 0, 0, 0.22)
+polygon = PackedVector2Array(-480, -35, 480, -35, 480, 35, -480, 35)
+
+[node name="Body" type="Polygon2D" parent="World/Ground" unique_id=538518997]
+color = Color(0.2, 0.294118, 0.372549, 1)
+polygon = PackedVector2Array(-480, -35, 480, -35, 480, 35, -480, 35)
+
+[node name="TopEdge" type="Polygon2D" parent="World/Ground" unique_id=551037419]
+position = Vector2(0, -32)
+color = Color(0.356863, 0.458824, 0.537255, 1)
+polygon = PackedVector2Array(-480, -3, 480, -3, 480, 3, -480, 3)
+
+[node name="Step01" type="StaticBody2D" parent="World" unique_id=48987347]
+position = Vector2(225, 483)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Step01" unique_id=1390461481]
+shape = SubResource("RectangleShape2D_step_1")
+
+[node name="Shadow" type="Polygon2D" parent="World/Step01" unique_id=114718585]
+position = Vector2(0, 7)
+color = Color(0, 0, 0, 0.22)
+polygon = PackedVector2Array(-80, -11, 80, -11, 80, 11, -80, 11)
+
+[node name="Body" type="Polygon2D" parent="World/Step01" unique_id=816210979]
+color = Color(0.282353, 0.403922, 0.486275, 1)
+polygon = PackedVector2Array(-80, -11, 80, -11, 80, 11, -80, 11)
+
+[node name="TopEdge" type="Polygon2D" parent="World/Step01" unique_id=121074599]
+position = Vector2(0, -8)
+color = Color(0.439216, 0.545098, 0.627451, 1)
+polygon = PackedVector2Array(-80, -3, 80, -3, 80, 3, -80, 3)
+
+[node name="Step02" type="StaticBody2D" parent="World" unique_id=1913741909]
+position = Vector2(429, 403)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Step02" unique_id=584297626]
+shape = SubResource("RectangleShape2D_step_2")
+
+[node name="Shadow" type="Polygon2D" parent="World/Step02" unique_id=1056483869]
+position = Vector2(0, 7)
+color = Color(0, 0, 0, 0.22)
+polygon = PackedVector2Array(-69, -11, 69, -11, 69, 11, -69, 11)
+
+[node name="Body" type="Polygon2D" parent="World/Step02" unique_id=1567039978]
+color = Color(0.282353, 0.403922, 0.486275, 1)
+polygon = PackedVector2Array(-69, -11, 69, -11, 69, 11, -69, 11)
+
+[node name="TopEdge" type="Polygon2D" parent="World/Step02" unique_id=1299601363]
+position = Vector2(0, -8)
+color = Color(0.439216, 0.545098, 0.627451, 1)
+polygon = PackedVector2Array(-69, -3, 69, -3, 69, 3, -69, 3)
+
+[node name="Step03" type="StaticBody2D" parent="World" unique_id=1075822071]
+position = Vector2(639, 324)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Step03" unique_id=2138719533]
+shape = SubResource("RectangleShape2D_step_3")
+
+[node name="Shadow" type="Polygon2D" parent="World/Step03" unique_id=811314820]
+position = Vector2(0, 7)
+color = Color(0, 0, 0, 0.22)
+polygon = PackedVector2Array(-74, -11, 74, -11, 74, 11, -74, 11)
+
+[node name="Body" type="Polygon2D" parent="World/Step03" unique_id=1104424190]
+color = Color(0.282353, 0.403922, 0.486275, 1)
+polygon = PackedVector2Array(-74, -11, 74, -11, 74, 11, -74, 11)
+
+[node name="TopEdge" type="Polygon2D" parent="World/Step03" unique_id=43961162]
+position = Vector2(0, -8)
+color = Color(0.439216, 0.545098, 0.627451, 1)
+polygon = PackedVector2Array(-74, -3, 74, -3, 74, 3, -74, 3)
+
+[node name="Step04" type="StaticBody2D" parent="World" unique_id=1741408294]
+position = Vector2(844, 241)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Step04" unique_id=1977633214]
+shape = SubResource("RectangleShape2D_step_4")
+
+[node name="Shadow" type="Polygon2D" parent="World/Step04" unique_id=404704973]
+position = Vector2(0, 7)
+color = Color(0, 0, 0, 0.22)
+polygon = PackedVector2Array(-84, -11, 84, -11, 84, 11, -84, 11)
+
+[node name="Body" type="Polygon2D" parent="World/Step04" unique_id=25647128]
+color = Color(0.301961, 0.501961, 0.427451, 1)
+polygon = PackedVector2Array(-84, -11, 84, -11, 84, 11, -84, 11)
+
+[node name="TopEdge" type="Polygon2D" parent="World/Step04" unique_id=1920232919]
+position = Vector2(0, -8)
+color = Color(0.458824, 0.635294, 0.560784, 1)
+polygon = PackedVector2Array(-84, -3, 84, -3, 84, 3, -84, 3)
+
+[node name="Step05" type="StaticBody2D" parent="World" unique_id=1452475330]
+position = Vector2(544, 235)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Step05" unique_id=1883081039]
+shape = SubResource("RectangleShape2D_step_3")
+
+[node name="Shadow" type="Polygon2D" parent="World/Step05" unique_id=666865993]
+position = Vector2(0, 7)
+color = Color(0, 0, 0, 0.22)
+polygon = PackedVector2Array(-74, -11, 74, -11, 74, 11, -74, 11)
+
+[node name="Body" type="Polygon2D" parent="World/Step05" unique_id=1115953361]
+color = Color(0.282353, 0.403922, 0.486275, 1)
+polygon = PackedVector2Array(-74, -11, 74, -11, 74, 11, -74, 11)
+
+[node name="TopEdge" type="Polygon2D" parent="World/Step05" unique_id=644329210]
+position = Vector2(0, -8)
+color = Color(0.439216, 0.545098, 0.627451, 1)
+polygon = PackedVector2Array(-74, -3, 74, -3, 74, 3, -74, 3)
+
+[node name="Goal" type="Area2D" parent="World" unique_id=139505911]
+unique_name_in_owner = true
+position = Vector2(850, 178)
+collision_layer = 0
+monitorable = false
+
+[node name="GoalPulse" type="Polygon2D" parent="World/Goal" unique_id=1939366216]
+unique_name_in_owner = true
+show_behind_parent = true
+color = Color(0.4, 0.85098, 0.627451, 0.32)
+polygon = PackedVector2Array(-26, 25, -18, 7, 0, -1, 18, 7, 26, 25, 18, 43, 0, 51, -18, 43)
+
+[node name="Pole" type="Line2D" parent="World/Goal" unique_id=113033454]
+points = PackedVector2Array(-18, 52, -18, -41)
+width = 5.0
+default_color = Color(0.862745, 0.913725, 0.968627, 1)
+antialiased = true
+
+[node name="GoalFlag" type="Polygon2D" parent="World/Goal" unique_id=1090165933]
+unique_name_in_owner = true
+color = Color(0.4, 0.85098, 0.627451, 1)
+polygon = PackedVector2Array(-16, -36, 34, -25, -16, -4)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Goal" unique_id=355652713]
+shape = SubResource("RectangleShape2D_goal")
+
+[node name="Player" parent="World" unique_id=576312658 instance=ExtResource("2_player")]
+unique_name_in_owner = true
+position = Vector2(70, 525)
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1572858380]
+layer = 10
+
+[node name="TopMargin" type="MarginContainer" parent="HUD" unique_id=680440084]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 88.0
+grow_horizontal = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+
+[node name="Row" type="HBoxContainer" parent="HUD/TopMargin" unique_id=838363149]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="MainPanel" type="PanelContainer" parent="HUD/TopMargin/Row" unique_id=197069525]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Column" type="VBoxContainer" parent="HUD/TopMargin/Row/MainPanel" unique_id=1171302259]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Heading" type="HBoxContainer" parent="HUD/TopMargin/Row/MainPanel/Column" unique_id=438151066]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="HUD/TopMargin/Row/MainPanel/Column/Heading" unique_id=554076094]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "单屏平台跳跃"
+
+[node name="ControlChip" type="Label" parent="HUD/TopMargin/Row/MainPanel/Column/Heading" unique_id=667906472]
+unique_name_in_owner = true
+layout_mode = 2
+text = "A / D · SPACE"
+
+[node name="JumpRow" type="HBoxContainer" parent="HUD/TopMargin/Row/MainPanel/Column" unique_id=170952254]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="JumpWindowLabel" type="Label" parent="HUD/TopMargin/Row/MainPanel/Column/JumpRow" unique_id=1241174846]
+unique_name_in_owner = true
+layout_mode = 2
+text = "长按窗口 0.085s"
+
+[node name="JumpBar" type="ProgressBar" parent="HUD/TopMargin/Row/MainPanel/Column/JumpRow" unique_id=120326056]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 12)
+layout_mode = 2
+size_flags_horizontal = 3
+show_percentage = false
+
+[node name="StatePanel" type="PanelContainer" parent="HUD/TopMargin/Row" unique_id=530280299]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(310, 0)
+layout_mode = 2
+
+[node name="StateColumn" type="VBoxContainer" parent="HUD/TopMargin/Row/StatePanel" unique_id=141684375]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="StateLabel" type="Label" parent="HUD/TopMargin/Row/StatePanel/StateColumn" unique_id=1512361305]
+unique_name_in_owner = true
+layout_mode = 2
+text = "状态  AIR / 空中"
+
+[node name="DetailLabel" type="Label" parent="HUD/TopMargin/Row/StatePanel/StateColumn" unique_id=1757407464]
+unique_name_in_owner = true
+layout_mode = 2
+text = "土狼时间 0.00s  ·  完成 0 次  ·  特效池 0 / 14"
+
+[node name="MessagePanel" type="PanelContainer" parent="HUD" unique_id=611710591]
+unique_name_in_owner = true
+modulate = Color(1, 1, 1, 0)
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -68.0
+offset_right = 300.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="MessageLabel" type="Label" parent="HUD/MessagePanel" unique_id=1366345962]
+unique_name_in_owner = true
+layout_mode = 2
+text = "A / D 移动 · 空格短按低跳、长按高跳 · 到达右上方旗帜"
+horizontal_alignment = 1
+vertical_alignment = 1

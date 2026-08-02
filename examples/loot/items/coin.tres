@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="LootDemoItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://examples/loot/loot_demo_item_data.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"demo:coin"
+display_name = "金币"
+description = "普通货币，可堆叠 64"
+tags = Array[StringName]([&"material"])
+category = &"material"
+category_order = 0
+display_color = Color(1, 0.831373, 0.372549, 1)
+icon_kind = &"coin"

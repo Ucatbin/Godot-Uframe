@@ -1,0 +1,88 @@
+[gd_scene format=3 uid="uid://bp0ogkqs3ejid"]
+
+[ext_resource type="Script" uid="uid://dkfyqx4vbof0p" path="res://examples/example_browser.gd" id="1"]
+[ext_resource type="Script" uid="uid://th8tb7dndwve" path="res://examples/common/example_backdrop.gd" id="2"]
+
+[node name="ExampleBrowser" type="Control" unique_id=94407958]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Backdrop" type="Control" parent="." unique_id=213761441]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2")
+accent = Color(0.435294, 0.54902, 1, 1)
+
+[node name="Content" type="MarginContainer" parent="." unique_id=833986068]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 38
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 38
+theme_override_constants/margin_bottom = 24
+
+[node name="Column" type="VBoxContainer" parent="Content" unique_id=922024615]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Header" type="HBoxContainer" parent="Content/Column" unique_id=1715778942]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Content/Column/Header" unique_id=1181779820]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "UFrame Playground"
+
+[node name="Version" type="Label" parent="Content/Column/Header" unique_id=2024095638]
+custom_minimum_size = Vector2(190, 32)
+layout_mode = 2
+text = "UFRAME 0.4.0  ·  GODOT 4.7"
+vertical_alignment = 1
+
+[node name="Subtitle" type="Label" parent="Content/Column" unique_id=818406098]
+layout_mode = 2
+text = "先运行玩法，再打开实体 .tscn：场景树会直接告诉你组件如何组合。"
+
+[node name="CardsScroll" type="ScrollContainer" parent="Content/Column" unique_id=1363826597]
+layout_mode = 2
+size_flags_vertical = 3
+scroll_horizontal_custom_step = 278.0
+vertical_scroll_mode = 0
+
+[node name="CardPadding" type="MarginContainer" parent="Content/Column/CardsScroll" unique_id=1576348732]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="Cards" type="HBoxContainer" parent="Content/Column/CardsScroll/CardPadding" unique_id=937678951]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Footer" type="HBoxContainer" parent="Content/Column" unique_id=1317659736]
+layout_mode = 2
+
+[node name="Hint" type="Label" parent="Content/Column/Footer" unique_id=1780490688]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "按 1 / 2 / 3 / 4 快速进入    ·    示例内按 Esc 返回"
+
+[node name="Note" type="Label" parent="Content/Column/Footer" unique_id=23035539]
+layout_mode = 2
+text = "场景树组合 · PackedScene 复用 · 横向滚动"
