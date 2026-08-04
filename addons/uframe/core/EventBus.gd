@@ -1,9 +1,10 @@
 extends Node
 
-## 轻量全局事件总线，用于互相不应直接引用的系统之间通信。
+## 轻量全局事件总线
 ##
-## 推荐用于“玩家死亡”“关卡完成”等低频跨系统通知。[br]
-## 同一个节点内部或高频战斗逻辑应优先使用 Godot 原生 signal 或直接调用。
+## 推荐用于低频跨系统通知[br]
+## 同一个节点内部或高频战斗逻辑应优先使用 Godot 原生 [code]signal[/code] 或直接调用[br][br]
+## [code]示例：[/code]
 ## [codeblock]
 ## UFrame.events.subscribe(&"coins_changed", _on_coins_changed)
 ## UFrame.events.emit_event(&"coins_changed", 10)
@@ -11,12 +12,16 @@ extends Node
 ## [/codeblock]
 class_name UFrameEventBus
 
-## [b]订阅者[/b][br]
+#region 运行时状态
+## [b]订阅者[/b][br][br]
 ## [color=cyan]映射： [/color]事件名 → 订阅信息数组。
 var _subscribers: Dictionary[StringName, Array] = {}
+#endregion
 
-## 立即发送事件。[param data] 可以是数字、Resource、Dictionary 等任意数据。
-## 回调没有参数时会直接调用；有参数时会把 data 传入。
+#region 主要方法
+## [b]发送事件[/b][br][br]
+## [param event_name] 事件标识符[br]
+## [param data] 事件传递的数据
 func emit_event(event_name: StringName, data: Variant = null) -> void:
 	var handlers: Array = _subscribers.get(event_name, [])
 	if handlers.is_empty():
@@ -62,9 +67,12 @@ func clear(event_name: StringName = &"") -> void:
 		_subscribers.clear()
 	else:
 		_subscribers.erase(event_name)
+#endregion
 
+#region 内部方法
 func _remove_entry(event_name: StringName, entry: Dictionary) -> void:
 	var handlers: Array = _subscribers.get(event_name, [])
 	handlers.erase(entry)
 	if handlers.is_empty():
 		_subscribers.erase(event_name)
+#endregion
