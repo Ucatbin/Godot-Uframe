@@ -1,10 +1,10 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://cdiu2p0xtk8bt"]
 
-[ext_resource type="Script" path="res://examples/spider/spider_demo.gd" id="1_demo"]
+[ext_resource type="Script" uid="uid://cbkr00oe13lxd" path="res://examples/spider/spider_demo.gd" id="1_demo"]
 [ext_resource type="PackedScene" path="res://examples/spider/spider_card.tscn" id="2_card"]
-[ext_resource type="Script" path="res://examples/spider/spider_feedback.gd" id="3_feedback"]
+[ext_resource type="Script" uid="uid://bkqtx7ib5mkwd" path="res://examples/spider/spider_feedback.gd" id="3_feedback"]
 
-[node name="SpiderDemo" type="Control"]
+[node name="SpiderDemo" type="Control" unique_id=2060308526]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -14,7 +14,7 @@ grow_vertical = 2
 script = ExtResource("1_demo")
 card_scene = ExtResource("2_card")
 
-[node name="BoardStage" type="Control" parent="."]
+[node name="BoardStage" type="Control" parent="." unique_id=1312747159]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -28,7 +28,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 1
 
-[node name="TableSurface" type="Panel" parent="BoardStage"]
+[node name="TableSurface" type="Panel" parent="BoardStage" unique_id=1154599568]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -37,7 +37,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Tableau" type="HBoxContainer" parent="BoardStage"]
+[node name="Tableau" type="HBoxContainer" parent="BoardStage" unique_id=398448229]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -52,67 +52,67 @@ grow_vertical = 2
 mouse_filter = 2
 theme_override_constants/separation = 12
 
-[node name="Column01" type="Panel" parent="BoardStage/Tableau"]
+[node name="Column01" type="Panel" parent="BoardStage/Tableau" unique_id=1168343550]
 custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="Column02" type="Panel" parent="BoardStage/Tableau"]
+[node name="Column02" type="Panel" parent="BoardStage/Tableau" unique_id=88875536]
 custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="Column03" type="Panel" parent="BoardStage/Tableau"]
+[node name="Column03" type="Panel" parent="BoardStage/Tableau" unique_id=1488878728]
 custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="Column04" type="Panel" parent="BoardStage/Tableau"]
+[node name="Column04" type="Panel" parent="BoardStage/Tableau" unique_id=1103453687]
 custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="Column05" type="Panel" parent="BoardStage/Tableau"]
+[node name="Column05" type="Panel" parent="BoardStage/Tableau" unique_id=1689752241]
 custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="Column06" type="Panel" parent="BoardStage/Tableau"]
+[node name="Column06" type="Panel" parent="BoardStage/Tableau" unique_id=1513267999]
 custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="Column07" type="Panel" parent="BoardStage/Tableau"]
+[node name="Column07" type="Panel" parent="BoardStage/Tableau" unique_id=795231436]
 custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="Column08" type="Panel" parent="BoardStage/Tableau"]
+[node name="Column08" type="Panel" parent="BoardStage/Tableau" unique_id=503358518]
 custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="Column09" type="Panel" parent="BoardStage/Tableau"]
+[node name="Column09" type="Panel" parent="BoardStage/Tableau" unique_id=460677122]
 custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="Column10" type="Panel" parent="BoardStage/Tableau"]
+[node name="Column10" type="Panel" parent="BoardStage/Tableau" unique_id=2081761946]
 custom_minimum_size = Vector2(72, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 
-[node name="CardLayer" type="Control" parent="BoardStage"]
+[node name="CardLayer" type="Control" parent="BoardStage" unique_id=1013967476]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -122,7 +122,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 1
 
-[node name="DragLayer" type="Control" parent="BoardStage"]
+[node name="DragLayer" type="Control" parent="BoardStage" unique_id=204639098]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -132,7 +132,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="FeedbackOverlay" type="Control" parent="BoardStage"]
+[node name="FeedbackOverlay" type="Control" parent="BoardStage" unique_id=1590885048]
 unique_name_in_owner = true
 z_index = 2000
 layout_mode = 1
@@ -144,7 +144,7 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("3_feedback")
 
-[node name="HeaderMargin" type="MarginContainer" parent="."]
+[node name="HeaderMargin" type="MarginContainer" parent="." unique_id=1166464816]
 z_index = 3000
 layout_mode = 1
 anchors_preset = 10
@@ -155,153 +155,153 @@ theme_override_constants/margin_left = 14
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 14
 
-[node name="HeaderPanel" type="PanelContainer" parent="HeaderMargin"]
+[node name="HeaderPanel" type="PanelContainer" parent="HeaderMargin" unique_id=2075913275]
 layout_mode = 2
 
-[node name="HeaderRow" type="HBoxContainer" parent="HeaderMargin/HeaderPanel"]
+[node name="HeaderRow" type="HBoxContainer" parent="HeaderMargin/HeaderPanel" unique_id=346120687]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="TitleBlock" type="VBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow"]
+[node name="TitleBlock" type="VBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow" unique_id=397178845]
 custom_minimum_size = Vector2(192, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 0
 
-[node name="Title" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock"]
+[node name="Title" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock" unique_id=383633210]
 layout_mode = 2
 text = "午夜蛛网"
 
-[node name="DifficultyRow" type="HBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock"]
+[node name="DifficultyRow" type="HBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock" unique_id=1945590429]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="DifficultyLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock/DifficultyRow"]
+[node name="DifficultyLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock/DifficultyRow" unique_id=1417461247]
 layout_mode = 2
 text = "难度"
 vertical_alignment = 1
 
-[node name="OneSuitButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock/DifficultyRow"]
+[node name="OneSuitButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock/DifficultyRow" unique_id=1828651701]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(42, 24)
 layout_mode = 2
 mouse_default_cursor_shape = 2
 text = "单色"
 
-[node name="TwoSuitButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock/DifficultyRow"]
+[node name="TwoSuitButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock/DifficultyRow" unique_id=1776121088]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(42, 24)
 layout_mode = 2
 mouse_default_cursor_shape = 2
 text = "双色"
 
-[node name="FourSuitButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock/DifficultyRow"]
+[node name="FourSuitButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/TitleBlock/DifficultyRow" unique_id=1723534661]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(42, 24)
 layout_mode = 2
 mouse_default_cursor_shape = 2
 text = "四色"
 
-[node name="Stats" type="VBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow"]
+[node name="Stats" type="VBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow" unique_id=318432262]
 custom_minimum_size = Vector2(142, 0)
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="MovesLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/Stats"]
+[node name="MovesLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/Stats" unique_id=1100661338]
 unique_name_in_owner = true
 layout_mode = 2
 text = "步数  0"
 
-[node name="ScoreLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/Stats"]
+[node name="ScoreLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/Stats" unique_id=1255387717]
 unique_name_in_owner = true
 layout_mode = 2
 text = "分数  500"
 
-[node name="StockLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/Stats"]
+[node name="StockLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/Stats" unique_id=948713980]
 unique_name_in_owner = true
 layout_mode = 2
 text = "剩余发牌  5"
 
-[node name="CompletedBlock" type="VBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow"]
+[node name="CompletedBlock" type="VBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow" unique_id=1425483370]
 custom_minimum_size = Vector2(166, 0)
 layout_mode = 2
 theme_override_constants/separation = 3
 
-[node name="CompletedLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock"]
+[node name="CompletedLabel" type="Label" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock" unique_id=1731277995]
 unique_name_in_owner = true
 layout_mode = 2
 text = "完整序列  0 / 8"
 
-[node name="Completed" type="HBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock"]
+[node name="Completed" type="HBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock" unique_id=1665765706]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 3
 
-[node name="Run01" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+[node name="Run01" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed" unique_id=1348727246]
 custom_minimum_size = Vector2(17, 24)
 layout_mode = 2
 
-[node name="Run02" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+[node name="Run02" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed" unique_id=1432883090]
 custom_minimum_size = Vector2(17, 24)
 layout_mode = 2
 
-[node name="Run03" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+[node name="Run03" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed" unique_id=1264091579]
 custom_minimum_size = Vector2(17, 24)
 layout_mode = 2
 
-[node name="Run04" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+[node name="Run04" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed" unique_id=1899753444]
 custom_minimum_size = Vector2(17, 24)
 layout_mode = 2
 
-[node name="Run05" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+[node name="Run05" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed" unique_id=1556497647]
 custom_minimum_size = Vector2(17, 24)
 layout_mode = 2
 
-[node name="Run06" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+[node name="Run06" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed" unique_id=2118659551]
 custom_minimum_size = Vector2(17, 24)
 layout_mode = 2
 
-[node name="Run07" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+[node name="Run07" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed" unique_id=906286711]
 custom_minimum_size = Vector2(17, 24)
 layout_mode = 2
 
-[node name="Run08" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed"]
+[node name="Run08" type="Panel" parent="HeaderMargin/HeaderPanel/HeaderRow/CompletedBlock/Completed" unique_id=439302195]
 custom_minimum_size = Vector2(17, 24)
 layout_mode = 2
 
-[node name="Actions" type="HBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow"]
+[node name="Actions" type="HBoxContainer" parent="HeaderMargin/HeaderPanel/HeaderRow" unique_id=273196048]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="DealButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/Actions"]
+[node name="DealButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/Actions" unique_id=1131051413]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(86, 0)
 layout_mode = 2
 mouse_default_cursor_shape = 2
 text = "发牌"
 
-[node name="UndoButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/Actions"]
+[node name="UndoButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/Actions" unique_id=2084719229]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 mouse_default_cursor_shape = 2
 text = "撤销"
 
-[node name="NewGameButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/Actions"]
+[node name="NewGameButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/Actions" unique_id=56252940]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(64, 0)
 layout_mode = 2
 mouse_default_cursor_shape = 2
 text = "重开"
 
-[node name="BackButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/Actions"]
+[node name="BackButton" type="Button" parent="HeaderMargin/HeaderPanel/HeaderRow/Actions" unique_id=1428624175]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(54, 0)
 layout_mode = 2
 mouse_default_cursor_shape = 2
 text = "返回"
 
-[node name="MessagePanel" type="PanelContainer" parent="."]
+[node name="MessagePanel" type="PanelContainer" parent="." unique_id=1186634387]
 z_index = 3100
 layout_mode = 1
 anchors_preset = 7
@@ -317,14 +317,14 @@ grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
 
-[node name="MessageLabel" type="Label" parent="MessagePanel"]
+[node name="MessageLabel" type="Label" parent="MessagePanel" unique_id=1026147414]
 unique_name_in_owner = true
 layout_mode = 2
 text = "拖拽或右键自动移动 · 同花色目标优先 · 1 / 2 / 4 切换难度"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="BigFeedback" type="Label" parent="."]
+[node name="BigFeedback" type="Label" parent="." unique_id=1924995059]
 unique_name_in_owner = true
 z_index = 4000
 layout_mode = 1
@@ -339,12 +339,11 @@ offset_right = 230.0
 offset_bottom = 46.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
 text = "完整序列"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ScreenFlash" type="ColorRect" parent="."]
+[node name="ScreenFlash" type="ColorRect" parent="." unique_id=1210938991]
 unique_name_in_owner = true
 z_index = 4090
 layout_mode = 1

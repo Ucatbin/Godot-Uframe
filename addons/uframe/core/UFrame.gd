@@ -1,39 +1,62 @@
 extends Node
 
-## UFrame 插件的全局入口。
+## UFrame 插件全局入口
 ##
-## 启用插件后会自动以 Autoload 的方式加载，不需要手动把它挂到场景中。
-## 所有全局模块都从这里访问，例如：[br]
+## 启用插件后会自动注册为 Autoload，不需要手动挂到场景中[br]
+## 可选模块由“项目设置 → UFrame → Modules”控制，关闭后对应引用为 [code]null[/code][br][br]
+## [code]示例：[/code]
 ## [codeblock]
-## UFrame.events.emit_event(&"game_started")
+## UFrame.events.publish(&"game_started")
 ## UFrame.audio.play_sfx(click_sound)
 ## [/codeblock]
-## 模块可以在“项目设置 → UFrame → Modules”中开关。
-## 被关闭的可选模块值为 [code]null[/code]，使用前应先判断是否存在。
 
-## 当前框架版本。可用于调试信息或存档兼容检查。
+#region 常量
+## [b]框架版本[/b][br]
+## 可用于调试信息或兼容性检查
 const VERSION := "0.4.0"
+#endregion
 
-## UFrame 与所有启用模块初始化完成后发出。
+#region 信号
+## [b]框架初始化完成[/b][br]
+## 全局入口与所有已启用模块完成创建后发出
 signal ready_completed
+#endregion
 
-## 跨系统事件总线。该模块始终启用。
+#region 运行时状态
+## [b]跨系统事件总线[/b][br]
+## 始终启用
 var events: UFrameEventBus
-## 数据注册表。用于通过类型和唯一 ID 管理游戏数据。
-var registry: UFrameRegistry
-## 存档服务。负责 Resource 的保存、读取和删除。
-var save: UFrameSave
-## 音频服务。负责 BGM 与音效播放器复用。
-var audio: UFrameAudio
-## 场景服务。负责场景切换和附加场景。
-var scenes: UFrameSceneService
-## 画面过渡服务。负责淡入、淡出和带过渡的场景切换。
-var transitions: UFrameTransition
-## 输入缓冲服务。默认关闭，动作游戏需要时再启用。
-var input: UFrameInput
-## 2D 相机效果服务。默认关闭，需要屏幕震动时再启用。
-var camera: UFrameCamera2D
 
+## [b]内容注册表[/b][br]
+## 通过内容类型和唯一 ID 管理运行时数据
+var registry: UFrameRegistry
+
+## [b]存档服务[/b][br]
+## 负责 [Resource] 的保存、读取和删除
+var save: UFrameSave
+
+## [b]音频服务[/b][br]
+## 负责 BGM 与非空间音效播放器复用
+var audio: UFrameAudio
+
+## [b]场景服务[/b][br]
+## 负责主场景切换和叠加场景管理
+var scenes: UFrameSceneService
+
+## [b]画面过渡服务[/b][br]
+## 负责淡入、淡出和带遮罩的场景切换
+var transitions: UFrameTransition
+
+## [b]输入缓冲服务[/b][br]
+## 默认关闭，动作游戏需要时再启用
+var input: UFrameInput
+
+## [b]2D 相机效果服务[/b][br]
+## 默认关闭，需要屏幕震动时再启用
+var camera: UFrameCamera2D
+#endregion
+
+#region 生命周期
 func _ready() -> void:
 	# EventBus 很小且是组件之间的基础通信设施，因此始终创建。
 	events = UFrameEventBus.new()
@@ -51,9 +74,21 @@ func _ready() -> void:
 	if ProjectSettings.get_setting("uframe/debug/logging", false):
 		print("[UFrame] v%s ready" % VERSION)
 	ready_completed.emit()
+#endregion
 
-## 根据项目设置创建一个可选模块。
-## 返回 null 表示开发者在项目设置中关闭了该模块。
+#region 查询方法
+## [b]判断模块是否启用[/b][br][br]
+## [param module_name] : 不含设置路径前缀的模块名
+func is_module_enabled(module_name: String) -> bool:
+	return ProjectSettings.get_setting("uframe/modules/%s" % module_name, false)
+#endregion
+
+#region 内部方法
+## [b]创建可选模块[/b][br]
+## 对应项目设置关闭时返回 [code]null[/code][br][br]
+## [param setting] : 完整的项目设置键[br]
+## [param script] : 用于实例化模块的脚本[br]
+## [param node_name] : 模块节点名
 func _create_module(setting: String, script: GDScript, node_name: StringName) -> Node:
 	if not ProjectSettings.get_setting(setting, false):
 		return null
@@ -61,8 +96,4 @@ func _create_module(setting: String, script: GDScript, node_name: StringName) ->
 	module.name = node_name
 	add_child(module)
 	return module
-
-## 查询指定模块是否在项目设置中启用。
-## 示例：[code]UFrame.is_module_enabled("audio")[/code]
-func is_module_enabled(module_name: String) -> bool:
-	return ProjectSettings.get_setting("uframe/modules/%s" % module_name, false)
+#endregion

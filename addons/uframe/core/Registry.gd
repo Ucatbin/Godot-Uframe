@@ -1,18 +1,44 @@
-class_name UFrameRegistry
 extends Node
 
-## 数据驱动内容的运行时注册表，通过 [code]UFrame.registry[/code] 使用。
+## 轻量运行时内容注册表
 ##
-## 注册表把“内容类型 + 唯一 ID”映射到 Resource、PackedScene 等对象。[br]
-## 例如武器可以使用类型 [code]&"weapon"[/code] 和 ID [code]&"game:fire_sword"[/code]。[br]
-## 这样系统只依赖 ID，不必直接引用其他模块的脚本。
+## 将“内容类型 + 唯一 ID”映射到 [Resource]、[PackedScene] 或其他非空值[br]
+## 适合让系统通过稳定 ID 查找数据，不负责把运行时内容自动保存到磁盘[br][br]
+## [code]示例：[/code]
+## [codeblock]
+## UFrame.registry.register(&"weapon", &"game:fire_sword", sword_data)
+## var sword = UFrame.registry.get_value(&"weapon", &"game:fire_sword")
+## UFrame.registry.unregister(&"weapon", &"game:fire_sword")
+## [/codeblock]
+class_name UFrameRegistry
 
+#region 信号
+## [b]内容注册完成[/b][br]
+## 首次注册或覆盖同类型下的已有 ID 后发出[br][br]
+## [param content_type] : 内容类型[br]
+## [param content_id] : 内容唯一标识符
 signal content_registered(content_type: StringName, content_id: StringName)
+
+## [b]内容移除完成[/b][br]
+## 仅在 [method unregister] 成功移除一项内容后发出；[method clear] 不会发出该信号[br][br]
+## [param content_type] : 内容类型[br]
+## [param content_id] : 内容唯一标识符
 signal content_unregistered(content_type: StringName, content_id: StringName)
+#endregion
 
+#region 运行时状态
+## [b]注册内容[/b][br][br]
+## [color=cyan]映射：[/color]内容类型 → {内容 ID → 非空值}。
 var _registry: Dictionary[StringName, Dictionary] = {}
+#endregion
 
-## 注册内容。参数为空时返回 false；重复 ID 会覆盖旧值并给出警告。
+#region 主要方法
+## [b]注册内容[/b][br]
+## 参数有效时返回 [code]true[/code][br]
+## 同类型下的重复 ID 会覆盖旧值、发出警告并再次发出 [signal content_registered][br][br]
+## [param content_type] : 内容类型[br]
+## [param content_id] : 内容唯一标识符[br]
+## [param value] : 需要注册的非空内容
 func register(content_type: StringName, content_id: StringName, value: Variant) -> bool:
 	if content_type.is_empty() or content_id.is_empty() or value == null:
 		push_error("[UFrameRegistry] content_type、content_id 和 value 不能为空")
@@ -24,7 +50,11 @@ func register(content_type: StringName, content_id: StringName, value: Variant) 
 	content_registered.emit(content_type, content_id)
 	return true
 
-## 移除一项内容。成功移除返回 true，目标不存在返回 false。
+## [b]移除内容[/b][br]
+## 成功移除返回 [code]true[/code]，目标不存在返回 [code]false[/code][br]
+## 类型下没有剩余内容时会同时清理该类型[br][br]
+## [param content_type] : 内容类型[br]
+## [param content_id] : 内容唯一标识符
 func unregister(content_type: StringName, content_id: StringName) -> bool:
 	var bucket: Dictionary = _registry.get(content_type, {})
 	if not bucket.erase(content_id):
@@ -34,8 +64,13 @@ func unregister(content_type: StringName, content_id: StringName) -> bool:
 	content_unregistered.emit(content_type, content_id)
 	return true
 
-## 扫描目录中的 .tres/.res 并注册，返回成功注册的数量。
-## 文件名会成为 ID；设置 prefix 后格式为 [code]prefix:文件名[/code]。
+## [b]从目录注册资源[/b][br]
+## 非递归扫描目录中的 [code].tres[/code] 与 [code].res[/code] 文件[br]
+## 文件基本名会成为 ID；设置前缀后格式为 [code]前缀:文件基本名[/code][br]
+## 返回成功加载并注册的文件数量，覆盖已有 ID 也计入数量[br][br]
+## [param content_type] : 内容类型[br]
+## [param directory_path] : 需要扫描的目录路径[br]
+## [param prefix] : 可选的 ID 前缀
 func register_from_directory(content_type: StringName, directory_path: String, prefix: StringName = &"") -> int:
 	var directory := DirAccess.open(directory_path)
 	if directory == null:
@@ -55,29 +90,45 @@ func register_from_directory(content_type: StringName, directory_path: String, p
 			registered += 1
 	return registered
 
-## 判断某个类型下是否存在指定 ID。
-func has_value(content_type: StringName, content_id: StringName) -> bool:
-	return _registry.has(content_type) and _registry[content_type].has(content_id)
-
-## 获取内容。目标不存在时返回 [param default_value]。
-func get_value(content_type: StringName, content_id: StringName, default_value: Variant = null) -> Variant:
-	return _registry.get(content_type, {}).get(content_id, default_value)
-
-## 返回指定类型的全部 ID。返回数组可安全修改，不会影响注册表。
-func list_ids(content_type: StringName) -> Array:
-	return _registry.get(content_type, {}).keys()
-
-## 返回当前存在的全部内容类型。
-func list_types() -> Array:
-	return _registry.keys()
-
-## 返回指定类型的字典副本。
-func get_all(content_type: StringName) -> Dictionary:
-	return _registry.get(content_type, {}).duplicate()
-
-## 清空一个类型；content_type 为空时清空整个注册表。
+## [b]清理注册内容[/b][br][br]
+## [param content_type] : 内容类型[br]
+## 为空时清理整个注册表，否则只清理指定类型；不会发出 [signal content_unregistered]
 func clear(content_type: StringName = &"") -> void:
 	if content_type.is_empty():
 		_registry.clear()
 	else:
 		_registry.erase(content_type)
+#endregion
+
+#region 查询方法
+## [b]判断内容是否存在[/b][br][br]
+## [param content_type] : 内容类型[br]
+## [param content_id] : 内容唯一标识符
+func has_value(content_type: StringName, content_id: StringName) -> bool:
+	return _registry.has(content_type) and _registry[content_type].has(content_id)
+
+## [b]获取内容[/b][br]
+## 目标不存在时返回 [param default_value][br][br]
+## [param content_type] : 内容类型[br]
+## [param content_id] : 内容唯一标识符[br]
+## [param default_value] : 目标不存在时返回的默认值
+func get_value(content_type: StringName, content_id: StringName, default_value: Variant = null) -> Variant:
+	return _registry.get(content_type, {}).get(content_id, default_value)
+
+## [b]获取类型下的全部 ID[/b][br]
+## 返回新的键数组[br][br]
+## [param content_type] : 内容类型
+func list_ids(content_type: StringName) -> Array:
+	return _registry.get(content_type, {}).keys()
+
+## [b]获取全部内容类型[/b][br]
+## 返回新的键数组
+func list_types() -> Array:
+	return _registry.keys()
+
+## [b]获取类型下的全部内容[/b][br]
+## 返回字典浅拷贝[br][br]
+## [param content_type] : 内容类型
+func get_all(content_type: StringName) -> Dictionary:
+	return _registry.get(content_type, {}).duplicate()
+#endregion

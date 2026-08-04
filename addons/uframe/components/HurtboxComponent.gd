@@ -1,29 +1,41 @@
-class_name UFrameHurtbox2D
 extends Area2D
 
-## 受击判定框，是 Hitbox/Hurtbox 碰撞系统的唯一伤害结算入口。
+## 受击判定框组件
 ##
-## 推荐场景结构：[br]
+## 作为 Hitbox/Hurtbox 系统的统一伤害结算入口，负责阵营、无敌时间与生命值检查[br]
+## 默认查找同级位置名为 [code]HealthComponent[/code] 的 [UFrameHealth][br][br]
+## [code]推荐场景结构：[/code]
 ## [codeblock]
 ## Player
 ## ├── HealthComponent       # UFrameHealth
 ## └── HurtboxComponent      # UFrameHurtbox2D
 ##     └── CollisionShape2D
 ## [/codeblock]
-## 默认会在同级位置查找名为 HealthComponent 的 UFrameHealth。结构不同时可修改 Health Path。
+class_name UFrameHurtbox2D
 
-## 指向本实体 UFrameHealth 节点的路径。
+#region 配置
+## [b]生命组件路径[/b]
 @export var health_path: NodePath = ^"../HealthComponent"
-## 是否在双方都有 UFrameTeam 时过滤友军伤害。
-## 任意一方没有 Team 时仍允许伤害，因此 Health/Hitbox 可以继续独立使用。
-@export var use_team_filter := true
-## 指向本实体 UFrameTeam 的可选路径。留空时按 TeamComponent 命名约定查找。
-@export var team_component_path: NodePath = ^"../TeamComponent"
-## 缓存生命组件，避免每次碰撞时重复查找节点。
-var _health: UFrameHealth
-## 可选阵营组件缓存。不存在时不会产生警告，也不会阻止伤害。
-var _team: UFrameTeam
 
+## [b]是否过滤友军伤害[/b][br]
+## 仅在双方都有 [UFrameTeam] 时生效；任意一方没有阵营组件时仍允许伤害
+@export var use_team_filter := true
+
+## [b]阵营组件路径[/b][br]
+## 留空时按 [code]TeamComponent[/code] 命名约定查找
+@export var team_component_path: NodePath = ^"../TeamComponent"
+#endregion
+
+#region 运行时状态
+## [b]生命组件缓存[/b]
+var _health: UFrameHealth
+
+## [b]阵营组件缓存[/b][br]
+## 不存在时不会产生警告，也不会阻止伤害
+var _team: UFrameTeam
+#endregion
+
+#region 生命周期
 func _ready() -> void:
 	_health = get_node_or_null(health_path) as UFrameHealth
 	if use_team_filter:
@@ -34,16 +46,12 @@ func _ready() -> void:
 	area_entered.connect(_on_area_entered)
 	if _health == null:
 		push_warning("[UFrameHurtbox2D] 找不到 UFrameHealth：%s" % health_path)
+#endregion
 
-func _on_area_entered(area: Area2D) -> void:
-	# 只接受真正的 UFrameHitbox2D，普通 Area2D 不会造成伤害。
-	var hitbox := area as UFrameHitbox2D
-	if hitbox:
-		receive_hit(hitbox)
-
-## 尝试接收一次命中并返回实际伤害。[br]
-## 除了 Area2D 的自动进入事件，周期性接触攻击也可以显式调用本方法，
-## 从而仍然统一经过 Hitbox、Team、无敌时间和 Health 的完整结算链。
+#region 主要方法
+## [b]接收命中[/b][br]
+## 返回实际伤害；周期性接触攻击也可以显式调用本方法复用完整结算链[br][br]
+## [param hitbox] : 进入本受击框的攻击判定框
 func receive_hit(hitbox: UFrameHitbox2D) -> int:
 	if hitbox == null or _health == null or not hitbox.can_hit(self):
 		return 0
@@ -57,3 +65,14 @@ func receive_hit(hitbox: UFrameHitbox2D) -> int:
 	if applied_damage > 0:
 		hitbox.mark_hit(self, applied_damage)
 	return applied_damage
+#endregion
+
+#region 内部方法
+## [b]处理区域进入[/b][br]
+## 普通 [Area2D] 不会造成伤害[br][br]
+## [param area] : 进入本受击框的区域
+func _on_area_entered(area: Area2D) -> void:
+	var hitbox := area as UFrameHitbox2D
+	if hitbox:
+		receive_hit(hitbox)
+#endregion

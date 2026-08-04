@@ -86,19 +86,19 @@ func _test_event_bus() -> void:
 	var callback := func(value: Variant) -> void: received.append(value)
 	bus.subscribe(&"test", callback)
 	bus.subscribe(&"test", callback)
-	bus.emit_event(&"test", 42)
+	bus.publish(&"test", 42)
 	_expect(received == [42], "event subscriptions are deduplicated")
 	bus.unsubscribe(&"test", callback)
-	bus.emit_event(&"test", 7)
+	bus.publish(&"test", 7)
 	_expect(received == [42], "event unsubscribe")
 	var recursive_count := [0]
 	var recursive_callback: Callable
 	recursive_callback = func() -> void:
 		recursive_count[0] += 1
-		bus.emit_event(&"once_recursive")
+		bus.publish(&"once_recursive")
 	bus.subscribe(&"once_recursive", recursive_callback, true)
-	bus.emit_event(&"once_recursive")
-	_expect(recursive_count[0] == 1, "once subscriber is removed before recursive emit")
+	bus.publish(&"once_recursive")
+	_expect(recursive_count[0] == 1, "once subscriber is removed before recursive publish")
 	bus.free()
 
 func _test_stats() -> void:

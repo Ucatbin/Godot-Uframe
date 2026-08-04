@@ -1,13 +1,20 @@
 @tool
 extends EditorPlugin
 
-## UFrame 编辑器插件入口。
-## 启用插件时注册项目设置，并自动创建唯一的 UFrame Autoload。
-## 游戏运行时不会执行本脚本；实际入口是 core/UFrame.gd。
+## UFrame 编辑器插件入口
+##
+## 启用插件时补充缺失的项目设置，并注册唯一的 [code]UFrame[/code] Autoload[br]
+## 不会覆盖宿主项目已有的设置或同名 Autoload；游戏运行时入口为 [code]core/UFrame.gd[/code]
 
-## Autoload 名称和路径集中定义，避免安装目录发生变化时到处修改。
+#region 常量
+## [b]Autoload 名称[/b]
 const AUTOLOAD_NAME := "UFrame"
+
+## [b]Autoload 脚本路径[/b]
 const AUTOLOAD_PATH := "res://addons/uframe/core/UFrame.gd"
+
+## [b]默认项目设置[/b][br]
+## 只用于补充尚不存在的设置，不会覆盖开发者选择
 const SETTINGS := {
 	"uframe/modules/registry": true,
 	"uframe/modules/save": true,
@@ -18,9 +25,15 @@ const SETTINGS := {
 	"uframe/modules/camera": false,
 	"uframe/debug/logging": true,
 }
+#endregion
 
+#region 运行时状态
+## [b]Autoload 所有权[/b][br]
+## 仅当同名入口指向本插件脚本时为 [code]true[/code]
 var _owns_autoload := false
+#endregion
 
+#region 生命周期
 func _enter_tree() -> void:
 	# 只写入不存在的设置，绝不覆盖开发者已经选择的模块开关。
 	for setting: String in SETTINGS:
@@ -44,3 +57,4 @@ func _exit_tree() -> void:
 	var existing_path := String(ProjectSettings.get_setting(autoload_setting, "")).trim_prefix("*")
 	if _owns_autoload and existing_path == AUTOLOAD_PATH:
 		remove_autoload_singleton(AUTOLOAD_NAME)
+#endregion
