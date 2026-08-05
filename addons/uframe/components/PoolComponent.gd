@@ -2,7 +2,11 @@ extends Node
 
 ## 通用场景对象池组件
 ##
-## 挂到一个 [Node] 并配置 [member pool_scene]，适合子弹、伤害数字和粒子等高频对象[br][br]
+## 挂到一个 [Node] 并配置 [member pool_scene]，适合子弹、伤害数字和粒子等高频对象[br]
+## 池化场景的根节点与后代应保留默认的 [constant Node.PROCESS_MODE_INHERIT][br]
+## 碰撞对象应保留默认的 [code]DISABLE_MODE_REMOVE[/code]，闲置时 Godot 会自动将其移出物理模拟[br]
+## 场景含有画面内容时，根节点应继承 [CanvasItem] 或 [Node3D]，以便一次隐藏整棵可视分支[br]
+## 可实现 [code]_on_pool_acquire()[/code] 与 [code]_on_pool_release()[/code] 重置自定义状态[br][br]
 ## [code]示例：[/code]
 ## [codeblock]
 ## var bullet := $BulletPool.acquire()
@@ -21,22 +25,6 @@ enum OverflowPolicy {
 	## 中断并复用当前活跃周期最早开始的实例。
 	RECYCLE_OLDEST_ACTIVE,
 }
-#endregion
-
-#region 常量
-## [b]2D 碰撞层元数据键[/b]
-const _META_LAYER_2D := &"_uframe_pool_layer_2d"
-## [b]2D 碰撞遮罩元数据键[/b]
-const _META_MASK_2D := &"_uframe_pool_mask_2d"
-## [b]3D 碰撞层元数据键[/b]
-const _META_LAYER_3D := &"_uframe_pool_layer_3d"
-## [b]3D 碰撞遮罩元数据键[/b]
-const _META_MASK_3D := &"_uframe_pool_mask_3d"
-## [b]区域监测状态元数据键[/b]
-const _META_MONITORING := &"_uframe_pool_monitoring"
-## [b]区域可监测状态元数据键[/b][br]
-## 框架前缀用于避免与游戏元数据重名
-const _META_MONITORABLE := &"_uframe_pool_monitorable"
 #endregion
 
 #region 信号
@@ -237,7 +225,8 @@ func _create_instance() -> Node:
 	return instance
 
 ## [b]设置实例活动状态[/b][br]
-## 同步处理模式、可见性与后代碰撞对象[br][br]
+## Godot 会根据继承的处理模式和碰撞对象的 [code]disable_mode[/code] 自动退出或恢复物理模拟[br]
+## 此处只需切换场景根节点的处理与可见性，不遍历场景结构[br][br]
 ## [param instance] : 需要设置的实例[br]
 ## [param active] : 是否启用实例
 func _set_instance_active(instance: Node, active: bool) -> void:
@@ -246,55 +235,6 @@ func _set_instance_active(instance: Node, active: bool) -> void:
 		(instance as CanvasItem).visible = active
 	elif instance is Node3D:
 		(instance as Node3D).visible = active
-	_set_collision_tree_active(instance, active)
-
-## [b]设置碰撞树活动状态[/b][br]
-## 递归处理实体根节点和全部后代，使组合实体闲置时不保留物理交互[br][br]
-## [param node] : 当前递归节点[br]
-## [param active] : 是否启用碰撞
-func _set_collision_tree_active(node: Node, active: bool) -> void:
-	if node is CollisionObject2D:
-		_set_collision_object_2d_active(node as CollisionObject2D, active)
-	elif node is CollisionObject3D:
-		_set_collision_object_3d_active(node as CollisionObject3D, active)
-	for child: Node in node.get_children():
-		_set_collision_tree_active(child, active)
-
-## [b]设置 2D 碰撞对象状态[/b][br]
-## 首次处理时保存原始碰撞层、遮罩与区域监测配置[br][br]
-## [param object] : 2D 碰撞对象[br]
-## [param active] : 是否恢复原始配置
-func _set_collision_object_2d_active(object: CollisionObject2D, active: bool) -> void:
-	if not object.has_meta(_META_LAYER_2D):
-		object.set_meta(_META_LAYER_2D, object.collision_layer)
-		object.set_meta(_META_MASK_2D, object.collision_mask)
-	object.collision_layer = int(object.get_meta(_META_LAYER_2D)) if active else 0
-	object.collision_mask = int(object.get_meta(_META_MASK_2D)) if active else 0
-	if object is Area2D:
-		var area := object as Area2D
-		if not area.has_meta(_META_MONITORING):
-			area.set_meta(_META_MONITORING, area.monitoring)
-			area.set_meta(_META_MONITORABLE, area.monitorable)
-		area.monitoring = bool(area.get_meta(_META_MONITORING)) if active else false
-		area.monitorable = bool(area.get_meta(_META_MONITORABLE)) if active else false
-
-## [b]设置 3D 碰撞对象状态[/b][br]
-## 首次处理时保存原始碰撞层、遮罩与区域监测配置[br][br]
-## [param object] : 3D 碰撞对象[br]
-## [param active] : 是否恢复原始配置
-func _set_collision_object_3d_active(object: CollisionObject3D, active: bool) -> void:
-	if not object.has_meta(_META_LAYER_3D):
-		object.set_meta(_META_LAYER_3D, object.collision_layer)
-		object.set_meta(_META_MASK_3D, object.collision_mask)
-	object.collision_layer = int(object.get_meta(_META_LAYER_3D)) if active else 0
-	object.collision_mask = int(object.get_meta(_META_MASK_3D)) if active else 0
-	if object is Area3D:
-		var area := object as Area3D
-		if not area.has_meta(_META_MONITORING):
-			area.set_meta(_META_MONITORING, area.monitoring)
-			area.set_meta(_META_MONITORABLE, area.monitorable)
-		area.monitoring = bool(area.get_meta(_META_MONITORING)) if active else false
-		area.monitorable = bool(area.get_meta(_META_MONITORABLE)) if active else false
 
 ## [b]清理失效实例引用[/b][br]
 ## 只在池达到容量上限时执行完整扫描

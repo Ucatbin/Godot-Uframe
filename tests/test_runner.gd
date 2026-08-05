@@ -743,11 +743,22 @@ func _test_pool() -> void:
 	_expect(pool.get_total_count() == 2, "pool prewarm respects maximum")
 	var first := pool.acquire() as Area2D
 	var second := pool.acquire() as Area2D
-	_expect(first != null and first.monitoring and first.monitorable, "pool acquire activates Area2D")
+	_expect(
+		first != null
+		and first.can_process()
+		and PhysicsServer2D.area_get_space(first.get_rid()).is_valid(),
+		"pool acquire restores Area2D through Godot processing"
+	)
 	_expect(second != null and pool.get_active_count() == 2, "pool can activate every prewarmed instance")
 	_expect(pool.acquire() == null and pool.get_total_count() == 2, "pool keeps the compatible return-null policy when its limit is full")
 	_expect(pool.release(first), "pool release")
-	_expect(not first.monitoring and not first.monitorable, "pooled Area2D collision is disabled while idle")
+	_expect(
+		not first.can_process()
+		and not PhysicsServer2D.area_get_space(first.get_rid()).is_valid()
+		and first.monitoring
+		and first.monitorable,
+		"pool lets Godot remove idle Area2D without rewriting its settings"
+	)
 	_expect(not pool.release(first), "pool rejects duplicate release")
 	first.queue_free()
 	await get_tree().process_frame
@@ -764,17 +775,17 @@ func _test_pool() -> void:
 	recycle_pool.maximum_size = 2
 	recycle_pool.overflow_policy = UFramePool.OverflowPolicy.RECYCLE_OLDEST_ACTIVE
 	var recycle_events: Array[String] = []
-	var release_monitoring_states: Array[bool] = []
-	var acquire_monitoring_states: Array[bool] = []
+	var release_process_states: Array[bool] = []
+	var acquire_process_states: Array[bool] = []
 	var created_instances: Array[Node] = []
 	recycle_pool.instance_created.connect(func(instance: Node) -> void: created_instances.append(instance))
 	recycle_pool.instance_released.connect(func(instance: Node) -> void:
 		recycle_events.append("released")
-		release_monitoring_states.append((instance as Area2D).monitoring)
+		release_process_states.append(instance.can_process())
 	)
 	recycle_pool.instance_acquired.connect(func(instance: Node) -> void:
 		recycle_events.append("acquired")
-		acquire_monitoring_states.append((instance as Area2D).monitoring)
+		acquire_process_states.append(instance.can_process())
 	)
 	recycle_pool.instance_recycled.connect(func(_instance: Node) -> void: recycle_events.append("recycled"))
 	add_child(recycle_pool)
@@ -782,14 +793,14 @@ func _test_pool() -> void:
 	var oldest := recycle_pool.acquire() as Area2D
 	var newer := recycle_pool.acquire() as Area2D
 	recycle_events.clear()
-	release_monitoring_states.clear()
-	acquire_monitoring_states.clear()
+	release_process_states.clear()
+	acquire_process_states.clear()
 	var first_recycled := recycle_pool.acquire() as Area2D
 	_expect(first_recycled == oldest, "pool recycles the oldest current active lifecycle at capacity")
 	_expect(
 		recycle_events == ["released", "acquired", "recycled"]
-		and release_monitoring_states == [false]
-		and acquire_monitoring_states == [true],
+		and release_process_states == [false]
+		and acquire_process_states == [true],
 		"pool recycling runs the complete release and acquire activation lifecycle"
 	)
 	recycle_events.clear()
@@ -815,7 +826,8 @@ func _test_pool() -> void:
 	unlimited_pool.queue_free()
 	await get_tree().process_frame
 
-	# 组合式实体的碰撞组件位于后代节点，池必须递归停用和恢复它们。
+	# 组合式实体的碰撞组件保留 Godot 默认的 Inherit + DisableMode Remove。
+	# 只切换根节点处理模式，后代会自动退出和恢复物理空间。
 	var composed_template := Node2D.new()
 	var nested_area := Area2D.new()
 	nested_area.name = "HitboxComponent"
@@ -840,11 +852,37 @@ func _test_pool() -> void:
 	var composed_instance := composed_pool.acquire() as Node2D
 	var active_area := composed_instance.get_node("HitboxComponent") as Area2D
 	var active_body := composed_instance.get_node("Body") as StaticBody2D
-	_expect(active_area.monitoring and active_area.monitorable and active_area.collision_layer == 4 and active_area.collision_mask == 2, "pool restores nested Area2D")
-	_expect(active_body.collision_layer == 16 and active_body.collision_mask == 1, "pool restores nested physics body")
+	_expect(
+		active_area.can_process()
+		and PhysicsServer2D.area_get_space(active_area.get_rid()).is_valid()
+		and active_area.collision_layer == 4
+		and active_area.collision_mask == 2,
+		"pool activates nested Area2D through inherited processing"
+	)
+	_expect(
+		active_body.can_process()
+		and PhysicsServer2D.body_get_space(active_body.get_rid()).is_valid()
+		and active_body.collision_layer == 16
+		and active_body.collision_mask == 1,
+		"pool activates nested physics body through inherited processing"
+	)
 	_expect(composed_pool.release(composed_instance), "release composed pooled entity")
-	_expect(not active_area.monitoring and not active_area.monitorable and active_area.collision_layer == 0 and active_area.collision_mask == 0, "pool disables nested Area2D")
-	_expect(active_body.collision_layer == 0 and active_body.collision_mask == 0, "pool disables nested physics body")
+	_expect(
+		not active_area.can_process()
+		and not PhysicsServer2D.area_get_space(active_area.get_rid()).is_valid()
+		and active_area.monitoring
+		and active_area.monitorable
+		and active_area.collision_layer == 4
+		and active_area.collision_mask == 2,
+		"Godot removes idle nested Area2D while preserving its configuration"
+	)
+	_expect(
+		not active_body.can_process()
+		and not PhysicsServer2D.body_get_space(active_body.get_rid()).is_valid()
+		and active_body.collision_layer == 16
+		and active_body.collision_mask == 1,
+		"Godot removes idle nested body while preserving its configuration"
+	)
 	composed_pool.queue_free()
 	await get_tree().process_frame
 

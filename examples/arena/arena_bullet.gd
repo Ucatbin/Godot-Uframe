@@ -34,7 +34,7 @@ func _on_hitbox_component_hit_confirmed(target: Node, applied_damage: int) -> vo
 		return
 	_release_queued = true
 	hit_confirmed.emit(target, applied_damage)
-	# 碰撞回调中不直接改 Area2D 的 monitoring，延迟到安全时机归还。
+	# 碰撞回调中不直接改变物理对象状态，延迟到安全时机归还。
 	call_deferred("_release_to_pool")
 
 func _on_pool_acquire() -> void:

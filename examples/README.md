@@ -27,7 +27,7 @@
 - `arena_player.tscn` 与 `arena_enemy.tscn` 把 Health、Team、Hitbox、Hurtbox 和碰撞形状作为实体子组件；
 - `arena_bullet.tscn` 使用“Node2D 实体根 + HitboxComponent 子节点”，移动与伤害职责不混在同一个类中；
 - 敌人接触攻击完整经过 `ContactHitbox → Team → Hurtbox → Health`，没有绕过组件直接扣血；
-- `UFramePool` 复用敌人、子弹和粒子爆发，并在闲置时递归关闭后代碰撞组件；
+- `UFramePool` 复用敌人、子弹和粒子爆发；闲置根节点停用后，Godot 根据后代默认的 `Disable Mode = Remove` 自动移出碰撞组件；
 - 玩家扬尘由实际移动距离、方向和速度触发；
 - 命中闪白、实际击退、死亡爆散、炮口拖尾和 Camera2D trauma；
 - 控制器缓存敌人引用，不在每次射击时重新分配 Group 数组。

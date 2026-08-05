@@ -123,7 +123,9 @@ if bullet:
 $BulletPool.release(bullet)
 ```
 
-`UFramePool` 会拒绝重复归还和外部对象，清理被外部释放的实例，并在闲置时递归关闭实体根及后代的 2D/3D 碰撞层和 Area 监测。这样可以安全使用“Entity 根 + Hitbox/Hurtbox 子组件”的池化场景。池化对象可实现 `_on_pool_acquire()` 与 `_on_pool_release()`。
+`UFramePool` 会拒绝重复归还和外部对象，并清理被外部释放的实例。归还时只将场景根节点设为 `PROCESS_MODE_DISABLED` 并隐藏；使用 Godot 默认配置时，后代碰撞对象会通过 `DISABLE_MODE_REMOVE` 自动退出物理模拟，取出时自动恢复，不需要改写碰撞层、遮罩或 Area 配置。
+
+池化场景的根节点和后代应保留默认的 `Process Mode = Inherit`，`CollisionObject2D/3D` 应保留默认的 `Disable Mode = Remove`。含有画面内容时，场景根节点应为 `CanvasItem`（例如 `Node2D`、`Control`）或 `Node3D`，这样根节点隐藏会自然作用于可视后代。需要停止音频、计时器、粒子或重置游戏数据时，实现 `_on_pool_acquire()` 与 `_on_pool_release()`。
 
 容量在 Inspector 中直接配置：
 

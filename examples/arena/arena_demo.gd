@@ -169,7 +169,7 @@ func _on_enemy_defeated(enemy: ArenaEnemy) -> void:
 	_show_floating_text(enemy.global_position, "+1")
 	if score % 10 == 0:
 		_show_temporary_message("威胁升级：生成间隔正在缩短", 1.6)
-	# Health.died 来自物理碰撞回调，延迟归还以安全关闭所有后代碰撞组件。
+	# Health.died 来自物理碰撞回调，延迟到回调结束后再停用实体根节点。
 	call_deferred("_release_enemy", enemy)
 
 func _release_enemy(enemy: ArenaEnemy) -> void:
