@@ -28,56 +28,55 @@ enum OverflowPolicy {
 #endregion
 
 #region 信号
-## [b]实例取出完成[/b][br][br]
+## 实例取出完成[br][br]
 ## [param instance] : 取出的实例
 signal instance_acquired(instance: Node)
 
-## [b]实例归还完成[/b][br][br]
+## 实例归还完成[br][br]
 ## [param instance] : 归还的实例
 signal instance_released(instance: Node)
 
-## [b]实例创建完成[/b][br]
+## 实例创建完成[br]
 ## 预热阶段创建的实例也会触发[br][br]
 ## [param instance] : 新创建的实例
 signal instance_created(instance: Node)
 
-## [b]实例强制复用完成[/b][br]
+## 实例强制复用完成[br]
 ## 不会额外发出 [signal instance_created][br][br]
 ## [param instance] : 被复用的实例
 signal instance_recycled(instance: Node)
 #endregion
 
 #region 配置
-## [b]池化场景[/b][br]
-## 必须设置
+## 池化场景[br]
 @export var pool_scene: PackedScene
 
-## [b]预热数量[/b][br]
+## 预加载数量[br]
 ## [code]0[/code] 表示不预创建
 @export_range(0, 100000) var initial_size := 0
 
-## [b]最大实例数[/b][br]
+## 最大实例数[br]
 ## [code]0[/code] 表示没有上限
 @export_range(0, 100000) var maximum_size := 0
 
-## [b]容量溢出策略[/b][br]
+## 容量溢出策略[br]
 ## 强制复用只适合粒子、拖尾和装饰等允许提前结束的对象
 @export_enum("达到上限返回空值", "复用最早活跃实例") var overflow_policy: int = OverflowPolicy.RETURN_NULL
 #endregion
 
 #region 运行时状态
-## [b]空闲实例[/b]
+## 空闲实例
 var _available: Array[Node] = []
 
-## [b]活跃实例[/b][br][br]
+## 活跃实例[br][br]
 ## [color=cyan]映射：[/color]实例 → 最近一次 [method acquire] 的递增顺序。
 var _active: Dictionary = {}
 
-## [b]本池实例[/b][br][br]
+## 本池实例[br][br]
 ## [color=cyan]集合：[/color]本池创建且尚未退出场景树的全部实例。
 var _owned: Dictionary = {}
 
-## [b]取出顺序计数[/b]
+## 取出顺序计数
 var _acquire_order := 0
 #endregion
 
