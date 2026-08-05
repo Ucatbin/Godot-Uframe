@@ -13,7 +13,7 @@ extends Node
 class_name UFrameEventBus
 
 #region 运行时状态
-## [b]订阅表[/b][br][br]
+## 事件订阅表[br][br]
 ## [color=cyan]映射：[/color]事件名 → 订阅信息数组，每条信息包含 [code]callback[/code] 和 [code]once[/code]。
 var _subscribers: Dictionary[StringName, Array] = {}
 #endregion
@@ -43,8 +43,7 @@ func publish(event_name: StringName, data: Variant = null) -> void:
 		else:
 			callback.call(data)
 
-## 订阅事件回调[br]
-## 重复订阅同一个 [Callable] 会被忽略[br]
+## 订阅事件回调，重复订阅同一个 [Callable] 会被忽略[br]
 ## [param once] 为 [code]true[/code] 时，会在首次执行前自动取消订阅，避免递归发布时重复进入[br][br]
 ## [param event_name] : 事件标识符[br]
 ## [param callback] : 事件触发时调用的零参数或单参数回调[br]
@@ -63,7 +62,7 @@ func subscribe(event_name: StringName, callback: Callable, once := false) -> voi
 	#订阅回调
 	handlers.append({"callback": callback, "once": once})
 
-## [b]取消订阅事件回调[/b][br][br]
+## 取消订阅事件回调[br][br]
 ## [param event_name] : 事件标识符[br]
 ## [param callback] : 指定的回调
 func unsubscribe(event_name: StringName, callback: Callable) -> void:
@@ -77,9 +76,8 @@ func unsubscribe(event_name: StringName, callback: Callable) -> void:
 	if handlers.is_empty():
 		_subscribers.erase(event_name)
 
-## [b]清理订阅[/b][br][br]
-## [param event_name] : 事件标识符[br]
-## 为空时清理全部事件，否则只清理指定事件；不会执行被移除的回调
+## 清理订阅[br][br]
+## [param event_name] : 事件标识符，为空时清理全部事件，否则只清理指定事件
 func clear(event_name: StringName = &"") -> void:
 	if event_name.is_empty():
 		_subscribers.clear()
@@ -88,12 +86,11 @@ func clear(event_name: StringName = &"") -> void:
 #endregion
 
 #region 内部方法
-## [b]移除指定订阅记录[/b][br]
-## 重新取得事件当前的订阅数组，避免回调在发布期间修改订阅关系后误删新记录[br][br]
+## 移除指定订阅记录[br][br]
 ## [param event_name] : 事件标识符[br]
 ## [param entry] : 需要移除的订阅信息
 func _remove_entry(event_name: StringName, entry: Dictionary) -> void:
-	#获取指定事件订阅信息数组
+	#获取指定事件订阅信息数组，避免回调在发布期间修改订阅关系后误删新记录
 	var handlers: Array = _subscribers.get(event_name, [])
 	#移除指定指定事件订阅信息
 	handlers.erase(entry)

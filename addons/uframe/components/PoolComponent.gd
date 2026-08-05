@@ -2,8 +2,7 @@ extends Node
 
 ## 通用场景对象池组件
 ##
-## 挂到一个 [Node] 并配置 [member pool_scene]，适合子弹、伤害数字和粒子等高频对象[br]
-## 池化对象可以实现 [code]_on_pool_acquire()[/code] 与 [code]_on_pool_release()[/code] 重置状态[br][br]
+## 挂到一个 [Node] 并配置 [member pool_scene]，适合子弹、伤害数字和粒子等高频对象[br][br]
 ## [code]示例：[/code]
 ## [codeblock]
 ## var bullet := $BulletPool.acquire()
@@ -27,19 +26,14 @@ enum OverflowPolicy {
 #region 常量
 ## [b]2D 碰撞层元数据键[/b]
 const _META_LAYER_2D := &"_uframe_pool_layer_2d"
-
 ## [b]2D 碰撞遮罩元数据键[/b]
 const _META_MASK_2D := &"_uframe_pool_mask_2d"
-
 ## [b]3D 碰撞层元数据键[/b]
 const _META_LAYER_3D := &"_uframe_pool_layer_3d"
-
 ## [b]3D 碰撞遮罩元数据键[/b]
 const _META_MASK_3D := &"_uframe_pool_mask_3d"
-
 ## [b]区域监测状态元数据键[/b]
 const _META_MONITORING := &"_uframe_pool_monitoring"
-
 ## [b]区域可监测状态元数据键[/b][br]
 ## 框架前缀用于避免与游戏元数据重名
 const _META_MONITORABLE := &"_uframe_pool_monitorable"
