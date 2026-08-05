@@ -750,8 +750,9 @@ func _test_pool() -> void:
 		"pool acquire restores Area2D through Godot processing"
 	)
 	_expect(second != null and pool.get_active_count() == 2, "pool can activate every prewarmed instance")
-	_expect(pool.acquire() == null and pool.get_total_count() == 2, "pool keeps the compatible return-null policy when its limit is full")
-	_expect(pool.release(first), "pool release")
+	var first_recycled := pool.acquire() as Area2D
+	_expect(first_recycled == first and pool.get_total_count() == 2, "pool automatically recycles the oldest active instance at capacity")
+	_expect(pool.release(first_recycled), "pool release")
 	_expect(
 		not first.can_process()
 		and not PhysicsServer2D.area_get_space(first.get_rid()).is_valid()
@@ -767,13 +768,12 @@ func _test_pool() -> void:
 	pool.queue_free()
 	await get_tree().process_frame
 
-	# 可丢弃表现对象可以显式选择“复用最早活跃实例”。最早按最近一次 acquire
-	# 的顺序计算；被回收后会成为最新活跃实例，不按最初创建时间判断。
+	# 最早实例按最近一次 acquire 的顺序计算；被回收后会重新插入有序活跃集合末尾，
+	# 成为最新活跃实例，而不是继续沿用最初创建时间。
 	var recycle_pool := UFramePool.new()
 	recycle_pool.pool_scene = packed
 	recycle_pool.initial_size = 2
 	recycle_pool.maximum_size = 2
-	recycle_pool.overflow_policy = UFramePool.OverflowPolicy.RECYCLE_OLDEST_ACTIVE
 	var recycle_events: Array[String] = []
 	var release_process_states: Array[bool] = []
 	var acquire_process_states: Array[bool] = []
@@ -787,7 +787,6 @@ func _test_pool() -> void:
 		recycle_events.append("acquired")
 		acquire_process_states.append(instance.can_process())
 	)
-	recycle_pool.instance_recycled.connect(func(_instance: Node) -> void: recycle_events.append("recycled"))
 	add_child(recycle_pool)
 	await get_tree().process_frame
 	var oldest := recycle_pool.acquire() as Area2D
@@ -795,10 +794,10 @@ func _test_pool() -> void:
 	recycle_events.clear()
 	release_process_states.clear()
 	acquire_process_states.clear()
-	var first_recycled := recycle_pool.acquire() as Area2D
-	_expect(first_recycled == oldest, "pool recycles the oldest current active lifecycle at capacity")
+	var recycled_oldest := recycle_pool.acquire() as Area2D
+	_expect(recycled_oldest == oldest, "pool recycles the oldest current active lifecycle at capacity")
 	_expect(
-		recycle_events == ["released", "acquired", "recycled"]
+		recycle_events == ["released", "acquired"]
 		and release_process_states == [false]
 		and acquire_process_states == [true],
 		"pool recycling runs the complete release and acquire activation lifecycle"
@@ -807,22 +806,21 @@ func _test_pool() -> void:
 	var second_recycled := recycle_pool.acquire() as Area2D
 	_expect(second_recycled == newer, "a recycled instance becomes newest before the next overflow")
 	_expect(recycle_pool.get_active_count() == 2 and recycle_pool.get_total_count() == 2 and created_instances.size() == 2, "pool recycling keeps counts bounded without creating nodes")
-	_expect(recycle_pool.release(first_recycled), "pool can normally release a recycled lifecycle")
+	_expect(recycle_pool.release(recycled_oldest), "pool can normally release a recycled lifecycle")
 	recycle_events.clear()
-	_expect(recycle_pool.acquire() == first_recycled and not recycle_events.has("recycled"), "pool always prefers an available instance before forced recycling")
+	_expect(recycle_pool.acquire() == recycled_oldest and recycle_events == ["acquired"], "pool always prefers an available instance before forced recycling")
 	recycle_pool.queue_free()
 	await get_tree().process_frame
 
-	# maximum_size=0 本身就是“不开启上限”；即使选择了回收策略也会正常扩容。
+	# maximum_size=0 本身就是“不启用上限”，因此始终按需扩容。
 	var unlimited_pool := UFramePool.new()
 	unlimited_pool.pool_scene = packed
-	unlimited_pool.overflow_policy = UFramePool.OverflowPolicy.RECYCLE_OLDEST_ACTIVE
 	add_child(unlimited_pool)
 	await get_tree().process_frame
 	var unlimited_a := unlimited_pool.acquire()
 	var unlimited_b := unlimited_pool.acquire()
 	var unlimited_c := unlimited_pool.acquire()
-	_expect(unlimited_a != unlimited_b and unlimited_b != unlimited_c and unlimited_pool.get_total_count() == 3, "pool ignores overflow policy while maximum_size is unlimited")
+	_expect(unlimited_a != unlimited_b and unlimited_b != unlimited_c and unlimited_pool.get_total_count() == 3, "pool grows while maximum_size is unlimited")
 	unlimited_pool.queue_free()
 	await get_tree().process_frame
 
@@ -901,10 +899,10 @@ func _test_arena_scene_composition() -> void:
 	_expect(bullet_pool != null, "arena authors BulletPool in scene")
 	_expect(effect_pool != null, "arena authors EffectPool in scene")
 	_expect(
-		enemy_pool.overflow_policy == UFramePool.OverflowPolicy.RETURN_NULL
-		and bullet_pool.overflow_policy == UFramePool.OverflowPolicy.RETURN_NULL
-		and effect_pool.overflow_policy == UFramePool.OverflowPolicy.RECYCLE_OLDEST_ACTIVE,
-		"arena enables oldest recycling only for disposable visual effects"
+		enemy_pool.maximum_size == 40
+		and bullet_pool.maximum_size == 64
+		and effect_pool.maximum_size == 48,
+		"arena configures bounded pools with automatic oldest recycling"
 	)
 	_expect(arena.has_node("MainCamera") and arena.has_node("HUD/TopMargin/TopRow/MainPanel"), "arena authors camera and HUD in scene")
 	arena.free()
@@ -966,7 +964,7 @@ func _test_platform_and_loot_scene_composition() -> void:
 	var platform := platform_scene.instantiate()
 	var platform_effect_pool := platform.get_node_or_null("World/EffectPool") as UFramePool
 	_expect(platform_effect_pool != null, "platform authors effect pool in level scene")
-	_expect(platform_effect_pool.overflow_policy == UFramePool.OverflowPolicy.RECYCLE_OLDEST_ACTIVE, "platform effect pool demonstrates bounded oldest recycling")
+	_expect(platform_effect_pool.maximum_size == 32, "platform effect pool demonstrates bounded oldest recycling")
 	_expect(platform.has_node("World/Ground/CollisionShape2D") and platform.has_node("World/Goal/CollisionShape2D"), "platform authors level collision in scene")
 	_expect(platform.has_node("World/Player/StateMachine") and platform.has_node("HUD/TopMargin/Row/MainPanel"), "platform instances player composition and HUD")
 	platform.free()

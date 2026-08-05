@@ -39,6 +39,7 @@ instance.visible = false
 - 根节点与需要一同停用的后代使用默认 `Process Mode = Inherit`。
 - 碰撞节点使用默认 `Disable Mode = Remove`。
 - 有画面内容的池化场景根节点必须继承 `CanvasItem` 或 `Node3D`。
+- `Maximum Size = 0` 表示无限扩容；正数容量满载时始终结束并复用最早活跃实例，不再维护溢出策略分支。
 - 音频、粒子、计时器和游戏数据通过 `_on_pool_release()` / `_on_pool_acquire()` 重置。
 
 测试现在直接验证碰撞 RID 退出并恢复物理空间，而不是验证碰撞层被改成 `0`。

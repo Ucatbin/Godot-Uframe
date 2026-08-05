@@ -22,7 +22,7 @@
 展示内容：
 
 - `arena_demo.tscn` 直接摆放 Player、Enemy/Bullet/Effect 三个对象池、Camera 和 HUD；
-- EnemyPool 与 BulletPool 满载时保持安全的返回空值策略；只给允许提前结束的 EffectPool 开启“复用最早活跃实例”，直接展示对象池溢出边界；
+- EnemyPool、BulletPool 与 EffectPool 都配置容量上限；满载时统一结束并复用最早活跃实例；
 - `arena_player.tscn` 在直属 `BehaviorManager` 下静态挂载真实的 Movement 行为；WASD、物理移动、边界限制和按位移扬尘都由该行为负责；
 - `arena_player.tscn` 与 `arena_enemy.tscn` 把 Health、Team、Hitbox、Hurtbox 和碰撞形状作为实体子组件；
 - `arena_bullet.tscn` 使用“Node2D 实体根 + HitboxComponent 子节点”，移动与伤害职责不混在同一个类中；

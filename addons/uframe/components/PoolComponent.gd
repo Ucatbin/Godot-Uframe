@@ -17,16 +17,6 @@ extends Node
 ## [/codeblock]
 class_name UFramePool
 
-#region 枚举
-## [b]容量溢出策略[/b]
-enum OverflowPolicy {
-	## [method acquire] 返回 [code]null[/code]，由调用方决定跳过或重试。
-	RETURN_NULL,
-	## 中断并复用当前活跃周期最早开始的实例。
-	RECYCLE_OLDEST_ACTIVE,
-}
-#endregion
-
 #region 信号
 ## [b]实例取出完成[/b][br][br]
 ## [param instance] : 取出的实例
@@ -40,11 +30,6 @@ signal instance_released(instance: Node)
 ## 预热阶段创建的实例也会触发[br][br]
 ## [param instance] : 新创建的实例
 signal instance_created(instance: Node)
-
-## [b]实例强制复用完成[/b][br]
-## 不会额外发出 [signal instance_created][br][br]
-## [param instance] : 被复用的实例
-signal instance_recycled(instance: Node)
 #endregion
 
 #region 配置
@@ -57,12 +42,8 @@ signal instance_recycled(instance: Node)
 @export_range(0, 100000) var initial_size := 0
 
 ## [b]最大实例数[/b][br]
-## [code]0[/code] 表示没有上限
+## [code]0[/code] 表示没有上限；达到正数上限时会自动复用最早启用的实例
 @export_range(0, 100000) var maximum_size := 0
-
-## [b]容量溢出策略[/b][br]
-## 强制复用只适合粒子、拖尾和装饰等允许提前结束的对象
-@export_enum("达到上限返回空值", "复用最早活跃实例") var overflow_policy: int = OverflowPolicy.RETURN_NULL
 #endregion
 
 #region 运行时状态
@@ -70,15 +51,12 @@ signal instance_recycled(instance: Node)
 var _available: Array[Node] = []
 
 ## [b]活跃实例[/b][br][br]
-## [color=cyan]映射：[/color]实例 → 最近一次 [method acquire] 的递增顺序。
+## [color=cyan]有序集合：[/color]实例 → 占位值；字典插入顺序就是实例启用顺序。
 var _active: Dictionary = {}
 
 ## [b]本池实例[/b][br][br]
 ## [color=cyan]集合：[/color]本池创建且尚未退出场景树的全部实例。
 var _owned: Dictionary = {}
-
-## [b]取出顺序计数[/b]
-var _acquire_order := 0
 #endregion
 
 #region 生命周期
@@ -95,12 +73,11 @@ func _ready() -> void:
 
 #region 主要方法
 ## [b]获取池化实例[/b][br]
-## 达到 [member maximum_size] 且没有空闲对象时，根据 [member overflow_policy] 返回 [code]null[/code] 或强制复用
+## 达到 [member maximum_size] 且没有空闲对象时，结束最早活跃实例的生命周期并立即复用
 func acquire() -> Node:
 	if pool_scene == null:
 		return null
 	var instance: Node = null
-	var recycled := false
 	# 正常热路径只从数组末尾 O(1) 取出，不再先扫描整个池。
 	while not _available.is_empty() and instance == null:
 		var candidate: Variant = _available.pop_back()
@@ -118,25 +95,21 @@ func acquire() -> Node:
 			_prune_invalid_instances()
 			if _owned.size() < maximum_size:
 				instance = _create_instance()
-			elif overflow_policy == OverflowPolicy.RECYCLE_OLDEST_ACTIVE:
+			else:
 				instance = _take_oldest_active()
 				if is_instance_valid(instance):
-					recycled = _deactivate_instance(instance, false)
-					if not recycled:
+					var reusable := _deactivate_instance(instance, false)
+					if not reusable:
 						# 生命周期钩子若主动销毁了旧实例，容量已经空出，直接补建一个。
 						instance = _create_instance() if _owned.size() < maximum_size else null
-			else:
-				return null
 	if not is_instance_valid(instance) or instance.is_queued_for_deletion():
 		return null
-	_acquire_order += 1
-	_active[instance] = _acquire_order
+	# Dictionary 保持插入顺序；复用实例重新插入后自然成为最新一项。
+	_active[instance] = true
 	_set_instance_active(instance, true)
 	if instance.has_method("_on_pool_acquire"):
 		instance.call("_on_pool_acquire")
 	instance_acquired.emit(instance)
-	if recycled:
-		instance_recycled.emit(instance)
 	return instance
 
 ## [b]归还池化实例[/b][br]
@@ -157,7 +130,6 @@ func clear() -> void:
 	_available.clear()
 	_active.clear()
 	_owned.clear()
-	_acquire_order = 0
 
 ## [b]获取池化实例兼容别名[/b][br]
 ## 新代码应直接使用 [method acquire]
@@ -179,21 +151,16 @@ func get_total_count() -> int:
 
 #region 内部方法
 ## [b]取出最早活跃实例[/b][br]
-## 只在池已满且启用强制复用时扫描，并先从活跃集合移除
+## Dictionary 保持插入顺序，因此第一项就是最早启用的实例
 func _take_oldest_active() -> Node:
-	var oldest: Node = null
-	var oldest_order := 9223372036854775807
+	var oldest_value: Variant = null
 	for candidate_value: Variant in _active:
-		var candidate := candidate_value as Node
-		if not is_instance_valid(candidate) or candidate.is_queued_for_deletion():
-			continue
-		var order := int(_active.get(candidate, oldest_order))
-		if order < oldest_order:
-			oldest = candidate
-			oldest_order = order
-	if oldest:
-		_active.erase(oldest)
-	return oldest
+		oldest_value = candidate_value
+		break
+	if oldest_value == null:
+		return null
+	_active.erase(oldest_value)
+	return oldest_value as Node
 
 ## [b]停用池化实例[/b][br]
 ## [param cache_instance] 为 [code]false[/code] 时，实例会在同一次获取中立即重新启用[br][br]
