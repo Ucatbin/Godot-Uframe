@@ -2,11 +2,7 @@ extends Node
 
 ## 通用场景对象池组件
 ##
-## 挂到一个 [Node] 并配置 [member pool_scene]，适合子弹、伤害数字和粒子等高频对象[br]
-## 池化场景的根节点与后代应保留默认的 [constant Node.PROCESS_MODE_INHERIT][br]
-## 碰撞对象应保留默认的 [code]DISABLE_MODE_REMOVE[/code]，闲置时 Godot 会自动将其移出物理模拟[br]
-## 场景含有画面内容时，根节点应继承 [CanvasItem] 或 [Node3D]，以便一次隐藏整棵可视分支[br]
-## 可实现 [code]_on_pool_acquire()[/code] 与 [code]_on_pool_release()[/code] 重置自定义状态[br][br]
+## 挂到一个 [Node] 并配置 [member pool_scene]，适合子弹、伤害数字和粒子等高频对象[br][br]
 ## [code]示例：[/code]
 ## [codeblock]
 ## var bullet := $BulletPool.acquire()
@@ -33,7 +29,7 @@ signal instance_created(instance: Node)
 #endregion
 
 #region 配置
-## 池化场景[br]
+## 池化场景
 @export var pool_scene: PackedScene
 
 ## 预加载数量[br]
@@ -50,11 +46,11 @@ signal instance_created(instance: Node)
 var _available: Array[Node] = []
 
 ## 活跃实例[br][br]
-## [color=cyan]有序集合：[/color]实例 → 占位值；字典插入顺序就是实例启用顺序。
+## [color=cyan]有序集合：[/color]实例 → 占位值；字典插入顺序就是实例启用顺序
 var _active: Dictionary = {}
 
-## 本池实例[br][br]
-## [color=cyan]集合：[/color]本池创建且尚未退出场景树的全部实例。
+## 本池实例[br]
+## 本池创建且尚未退出场景树的全部实例
 var _owned: Dictionary = {}
 #endregion
 
@@ -63,6 +59,7 @@ func _ready() -> void:
 	if pool_scene == null:
 		push_error("[UFramePool] 必须设置 pool_scene")
 		return
+	# 判断是否预加载数量超过最大数量限制
 	var prewarm_count := initial_size if maximum_size == 0 else mini(initial_size, maximum_size)
 	for _index in prewarm_count:
 		var instance := _create_instance()
@@ -71,13 +68,13 @@ func _ready() -> void:
 #endregion
 
 #region 主要方法
-## [b]获取池化实例[/b][br]
+## 获取池化实例[br]
 ## 达到 [member maximum_size] 且没有空闲对象时，结束最早活跃实例的生命周期并立即复用
 func acquire() -> Node:
 	if pool_scene == null:
 		return null
 	var instance: Node = null
-	# 正常热路径只从数组末尾 O(1) 取出，不再先扫描整个池。
+	# 检索空闲实例有效性，从后往前取出第一个有效空闲实例
 	while not _available.is_empty() and instance == null:
 		var candidate: Variant = _available.pop_back()
 		if is_instance_valid(candidate) and not (candidate as Node).is_queued_for_deletion():
@@ -86,12 +83,13 @@ func acquire() -> Node:
 			_owned.erase(candidate)
 			_active.erase(candidate)
 	if not is_instance_valid(instance):
+		# 未设上限或未达到 maximum_size 且没有空闲对象时，创建新的对象实例并取出
 		if maximum_size == 0 or _owned.size() < maximum_size:
 			instance = _create_instance()
 		else:
-			# 只有真正触顶时才进行一次失效清理，避免 HUD 高频 acquire/release
-			# 场景在每次获取前都 O(n) 扫描整个池。
+			# 触顶时进行一次失效清理
 			_prune_invalid_instances()
+			# 清理完毕后本池实例有空缺，则创建新的实例补充
 			if _owned.size() < maximum_size:
 				instance = _create_instance()
 			else:
@@ -99,11 +97,10 @@ func acquire() -> Node:
 				if is_instance_valid(instance):
 					var reusable := _deactivate_instance(instance, false)
 					if not reusable:
-						# 生命周期钩子若主动销毁了旧实例，容量已经空出，直接补建一个。
+						# 生命周期钩子若主动销毁了旧实例，容量已经空出，建新的实例补充
 						instance = _create_instance() if _owned.size() < maximum_size else null
 	if not is_instance_valid(instance) or instance.is_queued_for_deletion():
 		return null
-	# Dictionary 保持插入顺序；复用实例重新插入后自然成为最新一项。
 	_active[instance] = true
 	_set_instance_active(instance, true)
 	if instance.has_method("_on_pool_acquire"):
@@ -149,10 +146,10 @@ func get_total_count() -> int:
 #endregion
 
 #region 内部方法
-## [b]取出最早活跃实例[/b][br]
-## Dictionary 保持插入顺序，因此第一项就是最早启用的实例
+## 取出最早活跃实例
 func _take_oldest_active() -> Node:
 	var oldest_value: Variant = null
+	# Dictionary 保持插入顺序，因此第一项就是最早启用的实例
 	for candidate_value: Variant in _active:
 		oldest_value = candidate_value
 		break
@@ -161,7 +158,7 @@ func _take_oldest_active() -> Node:
 	_active.erase(oldest_value)
 	return oldest_value as Node
 
-## [b]停用池化实例[/b][br]
+## 停用实例[br][br]
 ## [param cache_instance] 为 [code]false[/code] 时，实例会在同一次获取中立即重新启用[br][br]
 ## [param instance] : 需要停用的实例[br]
 ## [param cache_instance] : 是否加入空闲数组
@@ -202,8 +199,7 @@ func _set_instance_active(instance: Node, active: bool) -> void:
 	elif instance is Node3D:
 		(instance as Node3D).visible = active
 
-## [b]清理失效实例引用[/b][br]
-## 只在池达到容量上限时执行完整扫描
+## 清理失效实例引用，只在池达到容量上限时执行完整扫描
 func _prune_invalid_instances() -> void:
 	for index in range(_available.size() - 1, -1, -1):
 		var instance: Variant = _available[index]

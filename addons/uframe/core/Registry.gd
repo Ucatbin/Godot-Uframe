@@ -26,7 +26,7 @@ signal content_unregistered(content_type: StringName, content_id: StringName)
 
 #region 运行时状态
 ## 内容注册表[br][br]
-## [color=cyan]映射：[/color]内容类型 → {内容 ID → 注册内容}。
+## 内容类型 → {内容 ID → 注册内容}
 var _registry: Dictionary[StringName, Dictionary] = {}
 #endregion
 
@@ -37,16 +37,16 @@ var _registry: Dictionary[StringName, Dictionary] = {}
 ## [param content_id] : 内容唯一标识符[br]
 ## [param value] : 需要注册的非空内容
 func register(content_type: StringName, content_id: StringName, value: Variant) -> bool:
-	#检查信息配置是否完整
+	# 检查信息配置是否完整
 	if content_type.is_empty() or content_id.is_empty() or value == null:
 		push_error("[UFrameRegistry] content_type、content_id 和 value 不能为空")
 		return false
-	#获取或创建指定分类
+	# 获取或创建指定分类
 	var bucket: Dictionary = _registry.get_or_add(content_type, {})
-	#覆盖旧资源
+	# 覆盖旧资源
 	if bucket.has(content_id):
 		push_warning("[UFrameRegistry] 重复 ID 已覆盖：%s/%s" % [content_type, content_id])
-	#写入资源
+	# 写入资源
 	bucket[content_id] = value
 	content_registered.emit(content_type, content_id)
 	return true
@@ -55,12 +55,12 @@ func register(content_type: StringName, content_id: StringName, value: Variant) 
 ## [param content_type] : 内容类型[br]
 ## [param content_id] : 内容唯一标识符
 func unregister(content_type: StringName, content_id: StringName) -> bool:
-	#获取指定分类
+	# 获取指定分类
 	var bucket: Dictionary = _registry.get(content_type, {})
-	#尝试移除指定内容并返回结果
+	# 尝试移除指定内容并返回结果
 	if not bucket.erase(content_id):
 		return false
-	#自动清理失效类型
+	# 自动清理失效类型
 	if bucket.is_empty():
 		_registry.erase(content_type)
 	content_unregistered.emit(content_type, content_id)
@@ -73,13 +73,13 @@ func unregister(content_type: StringName, content_id: StringName) -> bool:
 ## [param directory_path] : 需要扫描的目录路径[br]
 ## [param prefix] : 可选的 ID 前缀
 func register_from_directory(content_type: StringName, directory_path: String, prefix: StringName = &"") -> int:
-	#获取指定目录路径
+	# 获取指定目录路径
 	var directory := DirAccess.open(directory_path)
 	if directory == null:
 		push_error("[UFrameRegistry] 无法打开目录：%s" % directory_path)
 		return 0
 	var registered := 0
-	#检索符合条件的内容并注册
+	# 检索符合条件的内容并注册
 	for file_name in directory.get_files():
 		if not file_name.ends_with(".tres") and not file_name.ends_with(".res"):
 			continue
