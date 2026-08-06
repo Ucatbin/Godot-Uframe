@@ -95,10 +95,15 @@ func acquire() -> Node:
 			else:
 				instance = _take_oldest_active()
 				if is_instance_valid(instance):
-					var reusable := _deactivate_instance(instance, false)
-					if not reusable:
-						# 生命周期钩子若主动销毁了旧实例，容量已经空出，建新的实例补充
+					# 直接调钩子回收旧实例的状态，不经过停用/激活来回切换
+					if instance.has_method("_on_pool_release"):
+						instance.call("_on_pool_release")
+					if not is_instance_valid(instance) or instance.is_queued_for_deletion():
+						# 钩子主动销毁了旧实例，容量已经空出，建新的实例补充
+						_owned.erase(instance)
 						instance = _create_instance() if _owned.size() < maximum_size else null
+					else:
+						instance_released.emit(instance)
 	if not is_instance_valid(instance) or instance.is_queued_for_deletion():
 		return null
 	_active[instance] = true
@@ -114,7 +119,7 @@ func acquire() -> Node:
 func release(instance: Node) -> bool:
 	if not is_instance_valid(instance) or instance.is_queued_for_deletion() or not _owned.has(instance) or not _active.erase(instance):
 		return false
-	_deactivate_instance(instance, true)
+	_deactivate_instance(instance)
 	return true
 
 ## [b]释放全部实例[/b][br]
@@ -158,19 +163,16 @@ func _take_oldest_active() -> Node:
 	_active.erase(oldest_value)
 	return oldest_value as Node
 
-## 停用实例[br][br]
-## [param cache_instance] 为 [code]false[/code] 时，实例会在同一次获取中立即重新启用[br][br]
-## [param instance] : 需要停用的实例[br]
-## [param cache_instance] : 是否加入空闲数组
-func _deactivate_instance(instance: Node, cache_instance: bool) -> bool:
+## 停用实例并归还至空闲池[br][br]
+## [param instance] : 需要停用的实例
+func _deactivate_instance(instance: Node) -> bool:
 	if instance.has_method("_on_pool_release"):
 		instance.call("_on_pool_release")
 	if not is_instance_valid(instance) or instance.is_queued_for_deletion():
 		_owned.erase(instance)
 		return false
 	_set_instance_active(instance, false)
-	if cache_instance:
-		_available.append(instance)
+	_available.append(instance)
 	instance_released.emit(instance)
 	return true
 
