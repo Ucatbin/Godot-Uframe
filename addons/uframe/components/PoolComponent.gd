@@ -46,7 +46,7 @@ signal instance_created(instance: Node)
 var _available: Array[Node] = []
 
 ## 活跃实例[br][br]
-## [color=cyan]有序集合：[/color]实例 → 占位值；字典插入顺序就是实例启用顺序
+## 实例 -> 占位值
 var _active: Dictionary = {}
 
 ## 本池实例[br]
@@ -113,7 +113,7 @@ func acquire() -> Node:
 	instance_acquired.emit(instance)
 	return instance
 
-## [b]归还池化实例[/b][br]
+## 归还池化实例[br]
 ## 成功返回 [code]true[/code]；重复归还或归还非本池对象返回 [code]false[/code][br][br]
 ## [param instance] : 需要归还的实例
 func release(instance: Node) -> bool:
@@ -122,7 +122,7 @@ func release(instance: Node) -> bool:
 	_deactivate_instance(instance)
 	return true
 
-## [b]释放全部实例[/b][br]
+## 释放全部实例[br]
 ## 通常只在销毁池或切换系统时调用
 func clear() -> void:
 	for instance: Node in _owned:
@@ -131,21 +131,14 @@ func clear() -> void:
 	_available.clear()
 	_active.clear()
 	_owned.clear()
-
-## [b]获取池化实例兼容别名[/b][br]
-## 新代码应直接使用 [method acquire]
-func get_instance() -> Node:
-	return acquire()
 #endregion
 
 #region 查询方法
-## [b]获取活跃实例数[/b][br]
-## 退出场景树时会自动维护集合，因此查询成本固定
+## 获取活跃实例数
 func get_active_count() -> int:
 	return _active.size()
 
-## [b]获取实例总数[/b][br]
-## 排队释放的实例会在退出场景树时自动移除
+## 获取实例总数
 func get_total_count() -> int:
 	return _owned.size()
 #endregion
@@ -176,8 +169,7 @@ func _deactivate_instance(instance: Node) -> bool:
 	instance_released.emit(instance)
 	return true
 
-## [b]创建池化实例[/b][br]
-## 新实例会作为池节点的子节点加入场景树并立即停用
+## 创建池化实例；新实例会作为池节点的子节点加入场景树并立即停用[br]
 func _create_instance() -> Node:
 	var instance := pool_scene.instantiate()
 	if instance == null:
@@ -189,7 +181,7 @@ func _create_instance() -> Node:
 	instance_created.emit(instance)
 	return instance
 
-## [b]设置实例活动状态[/b][br]
+## 设置实例活动状态[br]
 ## Godot 会根据继承的处理模式和碰撞对象的 [code]disable_mode[/code] 自动退出或恢复物理模拟[br]
 ## 此处只需切换场景根节点的处理与可见性，不遍历场景结构[br][br]
 ## [param instance] : 需要设置的实例[br]
@@ -212,8 +204,7 @@ func _prune_invalid_instances() -> void:
 			_owned.erase(instance)
 			_active.erase(instance)
 
-## [b]处理实例退出场景树[/b][br]
-## 从全部运行时集合移除引用[br][br]
+## 处理实例退出场景树[br]
 ## [param instance] : 即将退出的实例
 func _on_instance_exiting(instance: Node) -> void:
 	_available.erase(instance)
