@@ -49,7 +49,7 @@ func _process(delta: float) -> void:
 	_world_time += delta
 	queue_redraw()
 	_animate_goal()
-	state_label.text = "状态  %s" % _state_display_name(player.fsm.get_current_state_name())
+	state_label.text = "状态  %s" % _state_display_name(player.sm.get_current_state_name())
 	jump_bar.value = player.get_jump_hold_ratio() * 100.0
 	detail_label.text = "土狼时间 %.2fs  ·  完成 %d 次  ·  特效池 %d / %d" % [
 		player.coyote_remaining,

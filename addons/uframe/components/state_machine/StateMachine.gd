@@ -7,7 +7,7 @@ extends Node
 class_name UFrameStateMachine
 
 #region 信号
-## [b]状态切换完成[/b][br]
+## 状态切换完成[br]
 ## 新状态的 [method UFrameState.on_enter] 执行后发出[br][br]
 ## [param previous] : 上一个状态名[br]
 ## [param current] : 当前状态名
@@ -15,17 +15,17 @@ signal state_changed(previous: StringName, current: StringName)
 #endregion
 
 #region 配置
-## [b]初始状态名[/b][br]
+## 初始状态名[br]
 ## 必须在初始化前设置，并对应一个直属 [UFrameState] 子节点
 @export var initial_state: StringName
 #endregion
 
 #region 运行时状态
-## [b]当前正在运行的状态[/b][br]
+## 当前正在运行的状态[br]
 var current_state: UFrameState = null
 
-## [b]状态表[/b][br][br]
-## [color=cyan]映射：[/color]状态名 → [UFrameState]。
+## 状态表[br][br]
+## 状态名 -> [UFrameState]
 var _states: Dictionary[StringName, UFrameState] = {}
 #endregion
 
@@ -34,6 +34,7 @@ func _ready() -> void:
 	if initial_state.is_empty():
 		push_error("未设置初始状态")
 		return
+	# 自动获取状态并注入
 	for child in get_children():
 		if child is UFrameState:
 			_states[child.state_name] = child
@@ -51,7 +52,7 @@ func _physics_process(delta: float) -> void:
 #endregion
 
 #region 主要方法
-## [b]切换当前状态[/b][br]
+## 切换当前状态[br]
 ## 目标不存在或已经是当前状态时保持不变[br][br]
 ## [param state_name] : 目标状态名[br]
 ## [param data] : 传递给 [method UFrameState.on_enter] 的数据
@@ -62,21 +63,20 @@ func change_state(state_name: StringName, data := {}) -> void:
 	var new_state: UFrameState = _states[state_name]
 	if new_state == current_state:
 		return
-	var previous := get_current_state_name()
+	var previous_state := get_current_state_name()
 	if current_state:
 		current_state.on_exit()
 	current_state = new_state
 	current_state.on_enter(data)
-	state_changed.emit(previous, StringName(state_name))
+	state_changed.emit(previous_state, StringName(state_name))
 #endregion
 
 #region 查询方法
-## [b]获取当前状态名[/b][br]
-## 没有激活状态时返回空 [StringName]
+## 获取当前状态名；没有激活状态时返回空 [StringName]
 func get_current_state_name() -> StringName:
 	return current_state.state_name if current_state else StringName()
 
-## [b]判断当前状态[/b][br][br]
+## 判断当前状态[br][br]
 ## [param state_name] : 需要检查的状态名
 func is_in_state(state_name: StringName) -> bool:
 	return current_state and current_state.state_name == state_name

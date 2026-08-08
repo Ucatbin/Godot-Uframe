@@ -1,54 +1,54 @@
-class_name PlatformerPlayer
 extends CharacterBody2D
 
-## 平台玩家实体。
+## 平台跳跃玩家实体
 ##
-## 本脚本只保存玩家共享的数据、更新输入状态，并提供动作与反馈原语。
-## Idle / Run / Air 三个状态才真正负责修改速度、调用 move_and_slide() 和切换状态。
-## 打开 platformer_player.tscn，就能直接在场景树中看到状态机与全部状态。
+## 本脚本只保存玩家共享的数据、更新输入状态，并提供动作与反馈原语
+## Idle / Run / Air 三个状态才真正负责修改速度、调用 move_and_slide() 和切换状态
+## 打开 platformer_player.tscn，就能直接在场景树中看到状态机与全部状态
+class_name PlatformerPlayer
 
 signal jumped
 signal landed(impact_speed: float)
 signal fell
 
 @export_category("移动参数")
-## 地面最大水平速度。
+## 地面最大水平速度
 @export var movement_speed := 235.0
-## 地面加速度，同时也决定松开按键后的减速速度。
+## 地面加速度
 @export var ground_acceleration := 1650.0
-## 空中加速度。
+## 空中加速度
 @export var air_acceleration := 980.0
-## 向上的初始跳跃速度。
+## 向上的初始跳跃速度
 @export var jump_speed := -430.0
-## 正常下落时的重力。
+## 正常下落时的重力
 @export var gravity := 1120.0
-## 离开平台后仍允许起跳的时间。
+## 土狼跳窗口时间
 @export var coyote_time := 0.11
-## 提前松开跳跃键时限制上升速度，形成高低跳。
+## 提前松开跳跃键时限制上升速度，形成高低跳
 @export var jump_cut_speed := -160.0
-## 按住跳跃键时减弱重力的窗口；窗口刻意保持很短。
+## 按住跳跃键时减弱重力的窗口时间
 @export var jump_hold_time := 0.085
-## 没有启用 UFrameInput 时使用的本地输入缓冲时长。
+## 没有启用 UFrameInput 时使用的本地输入缓冲时长
 @export var local_buffer_time := 0.13
 
-## 由关卡根节点注入。池放在静止世界中，粒子不会跟随玩家继续移动。
+## 由关卡根节点注入；池放在静止世界中，粒子不会跟随玩家继续移动
 var effect_pool: UFramePool
-## 通关演出时可暂时关闭玩家输入，状态机和物理仍保持正常运行。
+## 通关演出时可暂时关闭玩家输入，状态机和物理仍保持正常运行
 var controls_enabled := true
-## 本物理帧读取到的水平输入，三个状态共同读取。
+## 本物理帧读取到的水平输入，三个状态共同读取
 var move_axis := 0.0
-## 本物理帧是否仍按住跳跃键。
+## 本物理帧是否仍按住跳跃键
 var jump_held := false
-## 本物理帧是否刚松开跳跃键。
+## 本物理帧是否刚松开跳跃键
 var jump_released := false
-## 当前剩余土狼时间，HUD 会直接展示它。
+## 当前剩余土狼时间
 var coyote_remaining := 0.0
-## 当前剩余长按跳跃窗口。
+## 当前剩余长按跳跃窗口
 var jump_hold_remaining := 0.0
-## 玩家在本关的安全出生点。
+## 玩家在本关的安全出生点
 var spawn_position := Vector2.ZERO
 
-@onready var fsm: UFrameStateMachine = $StateMachine
+@onready var sm: UFrameStateMachine = $StateMachine
 @onready var visual_root: Node2D = $VisualRoot
 @onready var body_polygon: Polygon2D = $VisualRoot/Body
 @onready var highlight_polygon: Polygon2D = $VisualRoot/Highlight
@@ -63,8 +63,8 @@ var _body_tween: Tween
 func _ready() -> void:
 	spawn_position = global_position
 	# StateMachine 子节点会先于 Player 进入 _ready，因此这里主动同步一次初始视觉。
-	fsm.state_changed.connect(_on_state_changed)
-	_apply_state_visual(fsm.get_current_state_name())
+	sm.state_changed.connect(_on_state_changed)
+	_apply_state_visual(sm.get_current_state_name())
 
 func _physics_process(delta: float) -> void:
 	# 父实体先更新共享输入，随后子节点 StateMachine 会自动执行当前状态的物理回调。
@@ -127,7 +127,7 @@ func reset_to_spawn() -> void:
 	jump_hold_remaining = 0.0
 	_local_buffer_remaining = 0.0
 	_visual_scale = Vector2.ONE
-	fsm.change_state(&"air")
+	sm.change_state(&"air")
 	queue_redraw()
 
 ## 当前长按跳跃窗口的 0 到 1 比例，供 HUD 展示。
@@ -169,7 +169,7 @@ func _update_visual(delta: float) -> void:
 		clampf(velocity.x / movement_speed, -1.0, 1.0) * 0.065,
 		1.0 - exp(-12.0 * delta)
 	)
-	var bounce := absf(sin(_run_phase)) * 1.4 if fsm.is_in_state(&"run") else 0.0
+	var bounce := absf(sin(_run_phase)) * 1.4 if sm.is_in_state(&"run") else 0.0
 	visual_root.position = Vector2(0, 17 - bounce)
 	visual_root.rotation = _visual_rotation
 	# 只缩放 VisualRoot；CollisionShape2D 始终保持稳定尺寸。

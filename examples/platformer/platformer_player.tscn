@@ -32,7 +32,7 @@ polygon = PackedVector2Array(-13, -34, 13, -34, 13, 0, -13, 0)
 
 [node name="Highlight" type="Polygon2D" parent="VisualRoot" unique_id=409019569]
 color = Color(1, 0.870588, 0.639216, 1)
-polygon = PackedVector2Array(-10, -31, 10, -31, 10, -25, -10, -25)
+polygon = PackedVector2Array(-10, -31, 10, -31, 10, -27.04918, -10, -27.04918)
 
 [node name="EyeLeft" type="Polygon2D" parent="VisualRoot" unique_id=1750469154]
 color = Color(0.0784314, 0.129412, 0.2, 1)
@@ -43,8 +43,8 @@ color = Color(0.0784314, 0.129412, 0.2, 1)
 polygon = PackedVector2Array(3, -23, 7, -23, 7, -19, 3, -19)
 
 [node name="Mouth" type="Line2D" parent="VisualRoot" unique_id=305586588]
-points = PackedVector2Array(-5, -11, 5, -11)
-width = 2.0
+points = PackedVector2Array(-5, -11, -2.4590163, -10.655737, 0, -11.475409, 2.4590163, -10.655737, 5, -11)
+width = 1.5
 default_color = Color(0.0784314, 0.129412, 0.2, 1)
 antialiased = true
 
