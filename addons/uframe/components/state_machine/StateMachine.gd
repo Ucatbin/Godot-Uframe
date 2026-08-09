@@ -71,8 +71,8 @@ func change_state(state_name: StringName, data := {}) -> void:
 	current_state.on_enter(data)
 	state_changed.emit(previous_state, StringName(state_name))
 
-## 连接状态变化回调，并同步已经激活的当前状态[br]
-## 初始化前连接时，初始切换会通过信号正常送达；初始化后连接时，会立即回调一次空状态到当前状态[br][br]
+## 连接状态变化回调，并同步状态[br]
+## 防止初始状态切换信号无法正确送达，初始化后连接时，会立即回调一次空状态到当前状态[br]
 ## 重复连接同一回调时不会重复连接或再次同步[br][br]
 ## [param callback] : 接收 [code]previous[/code] 和 [code]current[/code] 两个状态名
 func connect_state_changed(callback: Callable) -> void:

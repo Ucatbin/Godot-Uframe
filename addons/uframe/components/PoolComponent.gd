@@ -157,8 +157,7 @@ func _take_oldest_active() -> Node:
 	_active.erase(oldest_value)
 	return oldest_value as Node
 
-## 结束当前取出生命周期并停用实例[br]
-## 空闲存放与完成信号由调用路径决定[br][br]
+## 结束当前取出生命周期并停用实例[br][br]
 ## [param instance] : 需要结束生命周期的实例
 func _end_instance_lifecycle(instance: Node) -> bool:
 	if instance.has_method("_on_pool_release"):
