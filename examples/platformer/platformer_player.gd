@@ -62,9 +62,8 @@ var _body_tween: Tween
 
 func _ready() -> void:
 	spawn_position = global_position
-	# StateMachine 子节点会先于 Player 进入 _ready，因此这里主动同步一次初始视觉。
-	sm.state_changed.connect(_on_state_changed)
-	_apply_state_visual(sm.get_current_state_name())
+	# 统一连接接口会自动同步状态机已经激活的初始状态。
+	sm.connect_state_changed(_on_state_changed)
 
 func _physics_process(delta: float) -> void:
 	# 父实体先更新共享输入，随后子节点 StateMachine 会自动执行当前状态的物理回调。

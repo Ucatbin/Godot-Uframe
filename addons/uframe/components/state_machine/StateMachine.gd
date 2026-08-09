@@ -9,6 +9,7 @@ class_name UFrameStateMachine
 #region 信号
 ## 状态切换完成[br]
 ## 新状态的 [method UFrameState.on_enter] 执行后发出[br][br]
+## 推荐使用 [method connect_state_changed] 订阅，避免晚于初始化连接时漏掉初始状态[br][br]
 ## [param previous] : 上一个状态名[br]
 ## [param current] : 当前状态名
 signal state_changed(previous: StringName, current: StringName)
@@ -69,6 +70,20 @@ func change_state(state_name: StringName, data := {}) -> void:
 	current_state = new_state
 	current_state.on_enter(data)
 	state_changed.emit(previous_state, StringName(state_name))
+
+## 连接状态变化回调，并同步已经激活的当前状态[br]
+## 初始化前连接时，初始切换会通过信号正常送达；初始化后连接时，会立即回调一次空状态到当前状态[br][br]
+## 重复连接同一回调时不会重复连接或再次同步[br][br]
+## [param callback] : 接收 [code]previous[/code] 和 [code]current[/code] 两个状态名
+func connect_state_changed(callback: Callable) -> void:
+	if not callback.is_valid():
+		push_error("[UFrameStateMachine] 状态回调无效")
+		return
+	if state_changed.is_connected(callback):
+		return
+	state_changed.connect(callback)
+	if current_state:
+		callback.call(StringName(), get_current_state_name())
 #endregion
 
 #region 查询方法

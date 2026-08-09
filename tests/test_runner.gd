@@ -777,15 +777,19 @@ func _test_pool() -> void:
 	var recycle_events: Array[String] = []
 	var release_process_states: Array[bool] = []
 	var acquire_process_states: Array[bool] = []
+	var release_space_states: Array[bool] = []
+	var acquire_space_states: Array[bool] = []
 	var created_instances: Array[Node] = []
 	recycle_pool.instance_created.connect(func(instance: Node) -> void: created_instances.append(instance))
 	recycle_pool.instance_released.connect(func(instance: Node) -> void:
 		recycle_events.append("released")
 		release_process_states.append(instance.can_process())
+		release_space_states.append(PhysicsServer2D.area_get_space((instance as Area2D).get_rid()).is_valid())
 	)
 	recycle_pool.instance_acquired.connect(func(instance: Node) -> void:
 		recycle_events.append("acquired")
 		acquire_process_states.append(instance.can_process())
+		acquire_space_states.append(PhysicsServer2D.area_get_space((instance as Area2D).get_rid()).is_valid())
 	)
 	add_child(recycle_pool)
 	await get_tree().process_frame
@@ -794,12 +798,16 @@ func _test_pool() -> void:
 	recycle_events.clear()
 	release_process_states.clear()
 	acquire_process_states.clear()
+	release_space_states.clear()
+	acquire_space_states.clear()
 	var recycled_oldest := recycle_pool.acquire() as Area2D
 	_expect(recycled_oldest == oldest, "pool recycles the oldest current active lifecycle at capacity")
 	_expect(
 		recycle_events == ["released", "acquired"]
 		and release_process_states == [false]
-		and acquire_process_states == [true],
+		and acquire_process_states == [true]
+		and release_space_states == [false]
+		and acquire_space_states == [true],
 		"pool recycling runs the complete release and acquire activation lifecycle"
 	)
 	recycle_events.clear()
@@ -1181,6 +1189,11 @@ func _test_state_machine() -> void:
 	var owner := Node.new()
 	var machine := UFrameStateMachine.new()
 	machine.initial_state = &"idle"
+	var early_transitions: Array = []
+	var early_callback := func(previous: StringName, current: StringName) -> void:
+		early_transitions.append([previous, current])
+	machine.connect_state_changed(early_callback)
+	machine.connect_state_changed(early_callback)
 	var idle_state: StateUpdateProbe
 	for state_name in [&"idle", &"run"]:
 		var state := StateUpdateProbe.new()
@@ -1192,6 +1205,19 @@ func _test_state_machine() -> void:
 	owner.add_child(machine)
 	add_child(owner)
 	_expect(machine.is_in_state(&"idle"), "state machine enters initial state")
+	_expect(
+		early_transitions == [[StringName(), &"idle"]],
+		"state observers connected before initialization receive initial state once"
+	)
+	var late_transitions: Array = []
+	var late_callback := func(previous: StringName, current: StringName) -> void:
+		late_transitions.append([previous, current])
+	machine.connect_state_changed(late_callback)
+	machine.connect_state_changed(late_callback)
+	_expect(
+		late_transitions == [[StringName(), &"idle"]],
+		"state observers connected after initialization receive current state immediately"
+	)
 	# process_frame / physics_frame 信号发生在对应回调之前，因此各等待两次。
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -1201,6 +1227,11 @@ func _test_state_machine() -> void:
 	_expect(idle_state.physics_update_count > 0, "state machine automatically forwards physics updates")
 	machine.change_state(&"run")
 	_expect(machine.get_current_state_name() == &"run", "state machine changes locally")
+	_expect(
+		early_transitions == [[StringName(), &"idle"], [&"idle", &"run"]]
+		and late_transitions == [[StringName(), &"idle"], [&"idle", &"run"]],
+		"state observers continue receiving later transitions"
+	)
 	owner.queue_free()
 	await get_tree().process_frame
 

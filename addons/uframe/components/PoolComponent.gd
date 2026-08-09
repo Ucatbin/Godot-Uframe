@@ -18,7 +18,8 @@ class_name UFramePool
 ## [param instance] : 取出的实例
 signal instance_acquired(instance: Node)
 
-## 实例归还完成[br][br]
+## 实例归还完成[br]
+## 信号触发时实例已经停用；容量溢出复用时，随后会立即进入新的取出生命周期[br][br]
 ## [param instance] : 归还的实例
 signal instance_released(instance: Node)
 
@@ -95,15 +96,12 @@ func acquire() -> Node:
 			else:
 				instance = _take_oldest_active()
 				if is_instance_valid(instance):
-					# 直接调钩子回收旧实例的状态，不经过停用/激活来回切换
-					if instance.has_method("_on_pool_release"):
-						instance.call("_on_pool_release")
-					if not is_instance_valid(instance) or instance.is_queued_for_deletion():
-						# 钩子主动销毁了旧实例，容量已经空出，建新的实例补充
-						_owned.erase(instance)
-						instance = _create_instance() if _owned.size() < maximum_size else null
-					else:
+					# 溢出复用只结束旧生命周期，不加入空闲数组
+					if _end_instance_lifecycle(instance):
 						instance_released.emit(instance)
+					else:
+						# 钩子主动销毁了旧实例，容量已经空出，建新的实例补充
+						instance = _create_instance() if _owned.size() < maximum_size else null
 	if not is_instance_valid(instance) or instance.is_queued_for_deletion():
 		return null
 	_active[instance] = true
@@ -119,7 +117,10 @@ func acquire() -> Node:
 func release(instance: Node) -> bool:
 	if not is_instance_valid(instance) or instance.is_queued_for_deletion() or not _owned.has(instance) or not _active.erase(instance):
 		return false
-	_deactivate_instance(instance)
+	if not _end_instance_lifecycle(instance):
+		return true
+	_available.append(instance)
+	instance_released.emit(instance)
 	return true
 
 ## 释放全部实例[br]
@@ -156,17 +157,16 @@ func _take_oldest_active() -> Node:
 	_active.erase(oldest_value)
 	return oldest_value as Node
 
-## 停用实例并归还至空闲池[br][br]
-## [param instance] : 需要停用的实例
-func _deactivate_instance(instance: Node) -> bool:
+## 结束当前取出生命周期并停用实例[br]
+## 空闲存放与完成信号由调用路径决定[br][br]
+## [param instance] : 需要结束生命周期的实例
+func _end_instance_lifecycle(instance: Node) -> bool:
 	if instance.has_method("_on_pool_release"):
 		instance.call("_on_pool_release")
 	if not is_instance_valid(instance) or instance.is_queued_for_deletion():
 		_owned.erase(instance)
 		return false
 	_set_instance_active(instance, false)
-	_available.append(instance)
-	instance_released.emit(instance)
 	return true
 
 ## 创建池化实例；新实例会作为池节点的子节点加入场景树并立即停用[br]
