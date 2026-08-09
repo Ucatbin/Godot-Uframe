@@ -8,8 +8,11 @@ extends CharacterBody2D
 class_name PlatformerPlayer
 
 #region 信号
+## 玩家真正开始一次跳跃后发出
 signal jumped
+## 玩家从空中接触地面后发出；impact_speed 是碰撞前的向下速度
 signal landed(impact_speed: float)
+## 玩家跌出关卡边界并完成复位后发出
 signal fell
 #endregion
 
@@ -75,6 +78,7 @@ var _body_tween: Tween
 #endregion
 
 #region 生命周期
+## 记录出生点、检查示例依赖，并同步连接状态变化
 func _ready() -> void:
 	spawn_position = global_position
 	if UFrame.input == null:
@@ -83,9 +87,11 @@ func _ready() -> void:
 		return
 	sm.connect_state_changed(_on_state_changed)
 
+## 每个物理帧更新输入状态与跳跃时间窗口
 func _physics_process(delta: float) -> void:
 	_update_input_state(delta)
 
+## 每帧更新玩家视觉，并检查是否跌出关卡边界
 func _process(delta: float) -> void:
 	_update_visual(delta)
 	if global_position.y > get_viewport_rect().size.y + 90.0:
@@ -103,7 +109,7 @@ func begin_jump() -> void:
 	_emit_jump_feedback()
 	jumped.emit()
 
-## Run 状态在完成真实物理移动后调用，以“实际位移”而不是定时器决定脚步粒子。
+## Run 状态在完成真实物理移动后调用，以实际位移决定脚步粒子
 func update_walk_feedback(previous_position: Vector2) -> void:
 	if not is_on_floor() or absf(velocity.x) < 35.0:
 		_walk_distance = 0.0
@@ -124,16 +130,16 @@ func update_walk_feedback(previous_position: Vector2) -> void:
 		velocity * 0.05
 	)
 
-## Idle / Air 进入时清除上一次奔跑的步距，避免再次奔跑立即喷出旧脚步。
+## Idle / Air 进入时清除上一次奔跑的步距，避免再次奔跑立即喷出旧脚步
 func reset_walk_feedback() -> void:
 	_walk_distance = 0.0
 
-## Air 状态确认真实落地后调用。
+## Air 状态确认真实落地后调用
 func emit_land_feedback(impact_speed: float) -> void:
 	_emit_land_feedback(impact_speed)
 	landed.emit(impact_speed)
 
-## 把玩家安全重置到出生点，并明确回到 Air，让状态负责重新落地。
+## 把玩家安全重置到出生点，并明确回到 Air，让状态负责重新落地
 func reset_to_spawn() -> void:
 	global_position = spawn_position
 	velocity = Vector2.ZERO
@@ -170,6 +176,7 @@ func _update_input_state(delta: float) -> void:
 		coyote_remaining = maxf(coyote_remaining - delta, 0.0)
 		jump_hold_remaining = maxf(jump_hold_remaining - delta, 0.0)
 
+## 查询 UFrameInput 中是否仍保存着有效的跳跃输入
 func _has_buffered_jump() -> bool:
 	return UFrame.input.is_action_buffered(&"platform_jump")
 
@@ -177,6 +184,9 @@ func _has_buffered_jump() -> bool:
 func _consume_buffered_jump() -> void:
 	UFrame.input.consume_buffer(&"platform_jump")
 
+#endregion
+
+#region 视觉
 ## 更新视觉
 func _update_visual(delta: float) -> void:
 	_run_phase += delta * (5.0 + absf(velocity.x) * 0.035)
@@ -206,6 +216,7 @@ func _apply_state_visual(state: StringName) -> void:
 	body_polygon.color = color
 	highlight_polygon.color = color.lightened(0.18)
 
+## 播放起跳粒子、身体拉伸与轻微相机震动
 func _emit_jump_feedback() -> void:
 	_spawn_dust(
 		global_position + Vector2(0, 17),
@@ -220,6 +231,7 @@ func _emit_jump_feedback() -> void:
 	if UFrame.camera:
 		UFrame.camera.add_trauma(0.08)
 
+## 根据落地速度播放不同强度的粒子、身体挤压与相机震动
 func _emit_land_feedback(impact_speed: float) -> void:
 	var strength := clampf(impact_speed / 760.0, 0.25, 1.0)
 	_spawn_dust(
@@ -235,6 +247,7 @@ func _emit_land_feedback(impact_speed: float) -> void:
 	if UFrame.camera:
 		UFrame.camera.add_trauma(0.10 + 0.12 * strength)
 
+## 从关卡级对象池获取一个爆发特效，并传入实际方向与继承速度
 func _spawn_dust(
 	origin: Vector2,
 	color: Color,
@@ -250,6 +263,7 @@ func _spawn_dust(
 	if effect:
 		effect.burst(origin, color, direction, amount, speed, spread, Vector2(0, 250), 0.48, 2.6, inherited_velocity)
 
+## 立即设置身体形变，再通过 Tween 回弹到正常比例
 func _animate_body(target_scale: Vector2, duration: float) -> void:
 	if _body_tween and _body_tween.is_valid():
 		_body_tween.kill()

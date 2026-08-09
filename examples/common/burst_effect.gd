@@ -1,16 +1,56 @@
-class_name DemoBurstEffect
 extends Node2D
 
-## 可由 UFramePool 复用的轻量粒子爆发。每个点都遵循速度、方向、重力和寿命。
+## 可由 UFramePool 复用的轻量粒子爆发
+##
+## 每个粒子点以 Dictionary 保存位置、速度和尺寸，由本节点统一进行物理更新和绘制
+## burst() 负责初始化一次爆发，寿命结束后节点会自动归还所属对象池
+class_name DemoBurstEffect
 
+#region 运行时状态
+## 当前爆发中的全部粒子点，每项包含 position、velocity 和 size
 var _points: Array[Dictionary] = []
+## 当前爆发已经持续的时间
 var _elapsed := 0.0
+## 当前爆发的总持续时间
 var _lifetime := 0.45
+## 当前全部粒子共用的颜色
 var _color := Color.WHITE
+## 每秒施加给粒子速度的加速度
 var _gravity := Vector2.ZERO
+## 当前粒子的基础绘制半径
 var _point_size := 2.4
+#endregion
 
-## 发射一次粒子爆发。inherited_velocity 可把玩家/敌人的真实速度传给粒子。
+#region 生命周期
+## 在物理帧中推进粒子的位置，并在寿命结束时归还对象池
+func _physics_process(delta: float) -> void:
+	_elapsed += delta
+	if _elapsed >= _lifetime:
+		_release_to_pool()
+		return
+	for point in _points:
+		point.velocity += _gravity * delta
+		point.position += point.velocity * delta
+	queue_redraw()
+
+## Godot 请求重绘节点时，绘制当前全部粒子点
+func _draw() -> void:
+	var alpha := 1.0 - _elapsed / _lifetime
+	for point in _points:
+		draw_circle(point.position, point.size * (0.55 + alpha * 0.45), Color(_color, alpha))
+
+## UFramePool 回收本节点时调用，清除上一次爆发遗留的粒子
+func _on_pool_release() -> void:
+	_points.clear()
+	queue_redraw()
+#endregion
+
+#region 主要方法
+## 发射一次粒子爆发
+##
+## origin 是爆发的世界坐标，direction 是粒子的中心发射方向
+## amount、speed 与 spread_degrees 分别控制数量、速度和方向扩散角度
+## inherited_velocity 可把玩家或敌人的真实速度传递给粒子
 func burst(
 	origin: Vector2,
 	color: Color,
@@ -40,27 +80,12 @@ func burst(
 			"size": randf_range(_point_size * 0.65, _point_size * 1.35),
 		})
 	queue_redraw()
+#endregion
 
-func _physics_process(delta: float) -> void:
-	_elapsed += delta
-	if _elapsed >= _lifetime:
-		_release_to_pool()
-		return
-	for point in _points:
-		point.velocity += _gravity * delta
-		point.position += point.velocity * delta
-	queue_redraw()
-
-func _draw() -> void:
-	var alpha := 1.0 - _elapsed / _lifetime
-	for point in _points:
-		draw_circle(point.position, point.size * (0.55 + alpha * 0.45), Color(_color, alpha))
-
-func _on_pool_release() -> void:
-	_points.clear()
-	queue_redraw()
-
+#region 内部方法
+## 将寿命结束的节点归还其父级对象池
 func _release_to_pool() -> void:
 	var pool := get_parent() as UFramePool
 	if pool:
 		pool.release(self)
+#endregion
