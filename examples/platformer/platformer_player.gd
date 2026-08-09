@@ -7,10 +7,13 @@ extends CharacterBody2D
 ## 打开 platformer_player.tscn，就能直接在场景树中看到状态机与全部状态
 class_name PlatformerPlayer
 
+#region 信号
 signal jumped
 signal landed(impact_speed: float)
 signal fell
+#endregion
 
+#region 配置
 @export_category("移动参数")
 ## 地面最大水平速度
 @export var movement_speed := 235.0
@@ -28,9 +31,20 @@ signal fell
 @export var jump_cut_speed := -160.0
 ## 按住跳跃键时减弱重力的窗口时间
 @export var jump_hold_time := 0.085
-## 没有启用 UFrameInput 时使用的本地输入缓冲时长
-@export var local_buffer_time := 0.13
+## 跳跃输入缓冲时长
+@export var jump_buffer_time := 0.13
 
+## 状态机
+@onready var sm: UFrameStateMachine = $StateMachine
+## 视觉根节点
+@onready var visual_root: Node2D = $VisualRoot
+## 身体多边形组件
+@onready var body_polygon: Polygon2D = $VisualRoot/Body
+## 高光多边形组件
+@onready var highlight_polygon: Polygon2D = $VisualRoot/Highlight
+#endregion
+
+#region 运行时状态
 ## 由关卡根节点注入；池放在静止世界中，粒子不会跟随玩家继续移动
 var effect_pool: UFramePool
 ## 是否允许输入
@@ -48,21 +62,25 @@ var jump_hold_remaining := 0.0
 ## 玩家在本关的安全出生点
 var spawn_position := Vector2.ZERO
 
-@onready var sm: UFrameStateMachine = $StateMachine
-@onready var visual_root: Node2D = $VisualRoot
-@onready var body_polygon: Polygon2D = $VisualRoot/Body
-@onready var highlight_polygon: Polygon2D = $VisualRoot/Highlight
-
-var _local_buffer_remaining := 0.0
-## 行走距离
+## 自上一次脚步粒子生成后累计的实际水平移动距离
 var _walk_distance := 0.0
+## 行走上下起伏动画的循环相位
 var _run_phase := 0.0
+## 仅作用于 VisualRoot 的临时挤压与拉伸比例
 var _visual_scale := Vector2.ONE
+## 根据水平速度平滑计算的视觉倾斜角度
 var _visual_rotation := 0.0
+## 当前负责将身体比例回弹至正常大小的 Tween；新动画开始时用于停止旧动画
 var _body_tween: Tween
+#endregion
 
+#region 生命周期
 func _ready() -> void:
 	spawn_position = global_position
+	if UFrame.input == null:
+		push_error("[PlatformerPlayer] 本示例需要启用 UFrame Input 模块")
+		process_mode = Node.PROCESS_MODE_DISABLED
+		return
 	sm.connect_state_changed(_on_state_changed)
 
 func _physics_process(delta: float) -> void:
@@ -73,11 +91,9 @@ func _process(delta: float) -> void:
 	if global_position.y > get_viewport_rect().size.y + 90.0:
 		reset_to_spawn()
 		fell.emit()
+#endregion
 
-## 判断是否可以进行跳跃
-func can_start_jump() -> bool:
-	return controls_enabled and coyote_remaining > 0.0 and _has_buffered_jump()
-
+#region 主要方法
 ## 消耗缓冲并开始跳跃
 func begin_jump() -> void:
 	_consume_buffered_jump()
@@ -123,28 +139,31 @@ func reset_to_spawn() -> void:
 	velocity = Vector2.ZERO
 	coyote_remaining = 0.0
 	jump_hold_remaining = 0.0
-	_local_buffer_remaining = 0.0
 	_visual_scale = Vector2.ONE
 	sm.change_state(&"air")
 	queue_redraw()
+#endregion
 
-## 当前长按跳跃窗口的 0 到 1 比例，供 HUD 展示。
+#region 查询方法
+## 判断是否可以进行跳跃
+func can_start_jump() -> bool:
+	return controls_enabled and coyote_remaining > 0.0 and _has_buffered_jump()
+
+## 当前长按跳跃窗口的比例，供 HUD 展示
 func get_jump_hold_ratio() -> float:
 	if jump_hold_time <= 0.0:
 		return 0.0
 	return clampf(jump_hold_remaining / jump_hold_time, 0.0, 1.0)
+#endregion
 
+#region 内部方法
 ## 每个物理帧读取按键，并更新跳跃缓冲、土狼时间与长按跳跃窗口
 func _update_input_state(delta: float) -> void:
 	move_axis = Input.get_axis(&"demo_move_left", &"demo_move_right") if controls_enabled else 0.0
 	jump_held = controls_enabled and Input.is_action_pressed(&"demo_jump")
 	jump_released = controls_enabled and Input.is_action_just_released(&"demo_jump")
 	if controls_enabled and Input.is_action_just_pressed(&"demo_jump"):
-		if UFrame.input:
-			UFrame.input.buffer_action(&"platform_jump", local_buffer_time)
-		else:
-			_local_buffer_remaining = local_buffer_time
-	_local_buffer_remaining = maxf(_local_buffer_remaining - delta, 0.0)
+		UFrame.input.buffer_action(&"platform_jump", jump_buffer_time)
 	if is_on_floor():
 		coyote_remaining = coyote_time
 	else:
@@ -152,14 +171,11 @@ func _update_input_state(delta: float) -> void:
 		jump_hold_remaining = maxf(jump_hold_remaining - delta, 0.0)
 
 func _has_buffered_jump() -> bool:
-	return UFrame.input.is_action_buffered(&"platform_jump") if UFrame.input else _local_buffer_remaining > 0.0
+	return UFrame.input.is_action_buffered(&"platform_jump")
 
 ## 消耗跳跃缓冲
 func _consume_buffered_jump() -> void:
-	if UFrame.input:
-		UFrame.input.consume_buffer(&"platform_jump")
-	else:
-		_local_buffer_remaining = 0.0
+	UFrame.input.consume_buffer(&"platform_jump")
 
 ## 更新视觉
 func _update_visual(delta: float) -> void:
@@ -241,3 +257,4 @@ func _animate_body(target_scale: Vector2, duration: float) -> void:
 	_body_tween = create_tween()
 	_body_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_body_tween.tween_property(self, "_visual_scale", Vector2.ONE, duration)
+#endregion
