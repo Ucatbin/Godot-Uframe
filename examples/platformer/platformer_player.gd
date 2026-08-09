@@ -33,7 +33,7 @@ signal fell
 
 ## 由关卡根节点注入；池放在静止世界中，粒子不会跟随玩家继续移动
 var effect_pool: UFramePool
-## 通关演出时可暂时关闭玩家输入，状态机和物理仍保持正常运行
+## 是否允许输入
 var controls_enabled := true
 ## 本物理帧读取到的水平输入，三个状态共同读取
 var move_axis := 0.0
@@ -54,6 +54,7 @@ var spawn_position := Vector2.ZERO
 @onready var highlight_polygon: Polygon2D = $VisualRoot/Highlight
 
 var _local_buffer_remaining := 0.0
+## 行走距离
 var _walk_distance := 0.0
 var _run_phase := 0.0
 var _visual_scale := Vector2.ONE
@@ -62,11 +63,9 @@ var _body_tween: Tween
 
 func _ready() -> void:
 	spawn_position = global_position
-	# 统一连接接口会自动同步状态机已经激活的初始状态。
 	sm.connect_state_changed(_on_state_changed)
 
 func _physics_process(delta: float) -> void:
-	# 父实体先更新共享输入，随后子节点 StateMachine 会自动执行当前状态的物理回调。
 	_update_input_state(delta)
 
 func _process(delta: float) -> void:
@@ -75,11 +74,11 @@ func _process(delta: float) -> void:
 		reset_to_spawn()
 		fell.emit()
 
-## 当前是否能消费一次跳跃。
+## 判断是否可以进行跳跃
 func can_start_jump() -> bool:
 	return controls_enabled and coyote_remaining > 0.0 and _has_buffered_jump()
 
-## 消费缓冲并开始跳跃。
+## 消耗缓冲并开始跳跃
 func begin_jump() -> void:
 	_consume_buffered_jump()
 	velocity.y = jump_speed
@@ -135,7 +134,7 @@ func get_jump_hold_ratio() -> float:
 		return 0.0
 	return clampf(jump_hold_remaining / jump_hold_time, 0.0, 1.0)
 
-## 每个物理帧读取按键，并更新跳跃缓冲、土狼时间与长按跳跃窗口。
+## 每个物理帧读取按键，并更新跳跃缓冲、土狼时间与长按跳跃窗口
 func _update_input_state(delta: float) -> void:
 	move_axis = Input.get_axis(&"demo_move_left", &"demo_move_right") if controls_enabled else 0.0
 	jump_held = controls_enabled and Input.is_action_pressed(&"demo_jump")
@@ -155,12 +154,14 @@ func _update_input_state(delta: float) -> void:
 func _has_buffered_jump() -> bool:
 	return UFrame.input.is_action_buffered(&"platform_jump") if UFrame.input else _local_buffer_remaining > 0.0
 
+## 消耗跳跃缓冲
 func _consume_buffered_jump() -> void:
 	if UFrame.input:
 		UFrame.input.consume_buffer(&"platform_jump")
 	else:
 		_local_buffer_remaining = 0.0
 
+## 更新视觉
 func _update_visual(delta: float) -> void:
 	_run_phase += delta * (5.0 + absf(velocity.x) * 0.035)
 	_visual_rotation = lerpf(
@@ -174,9 +175,12 @@ func _update_visual(delta: float) -> void:
 	# 只缩放 VisualRoot；CollisionShape2D 始终保持稳定尺寸。
 	visual_root.scale = _visual_scale * 1.22
 
+## 状态切换时执行[br]
+## 本案例通过玩家颜色的改变表示状态机状态切换
 func _on_state_changed(_previous: StringName, current: StringName) -> void:
 	_apply_state_visual(current)
 
+## 应用状态颜色
 func _apply_state_visual(state: StringName) -> void:
 	var color := Color("#5ca8ff")
 	if state == &"run":
