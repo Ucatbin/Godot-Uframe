@@ -1,10 +1,10 @@
+class_name UFrameStats
 extends Node
 
 ## 实体数值属性组件
 ##
 ## 挂到实体子节点，通过 [member base_stats] 配置基础值，并使用 [method add_modifier] 添加装备或增益效果[br]
 ## 最终值按修正优先级计算并缓存，只有基础值或修正发生变化时才重新计算
-class_name UFrameStats
 
 #region 信号
 ## [b]属性值变化[/b][br]

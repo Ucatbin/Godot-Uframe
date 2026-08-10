@@ -1,10 +1,10 @@
+class_name UFrameStateMachine
 extends Node
 
 ## 节点式有限状态机组件
 ##
 ## 将多个 [UFrameState] 作为直属子节点，并设置 [member initial_state][br]
 ## 状态机会向当前状态转发普通帧和物理帧更新，状态只需覆写需要的回调
-class_name UFrameStateMachine
 
 #region 信号
 ## 状态切换完成[br]
@@ -35,12 +35,17 @@ func _ready() -> void:
 	if initial_state.is_empty():
 		push_error("未设置初始状态")
 		return
-	# 自动获取状态并注入
+	# 先收集完整状态表，保证任何状态在 on_setup() 中都能查询其他状态
+	var states_to_setup: Array[UFrameState] = []
 	for child in get_children():
 		if child is UFrameState:
-			_states[child.state_name] = child
-			child.state_machine = self
-			child.entity = get_parent()
+			var state := child as UFrameState
+			_states[state.state_name] = state
+			states_to_setup.append(state)
+	# 状态表完整后再统一注入依赖，每个状态只装配一次
+	var owner_entity := get_parent()
+	for state in states_to_setup:
+		state.setup(self, owner_entity)
 	change_state(initial_state)
 
 func _process(delta: float) -> void:

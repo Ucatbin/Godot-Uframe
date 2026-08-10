@@ -173,7 +173,7 @@ inventory.sort_and_merge()
 
 ### 状态机与行为
 
-- `UFrameStateMachine` + `UFrameState`：唯一节点式状态机；直接挂在实体下，状态作为它的子节点。状态机自动转发普通帧与物理帧更新，每个状态只需覆写需要的回调。使用 `connect_state_changed()` 连接状态回调，无论连接发生在初始化前后都会同步到初始状态。平台示例的 Idle、Run、Air 分别真正执行移动、跳跃和重力逻辑，而不是空标签。
+- `UFrameStateMachine` + `UFrameState`：唯一节点式状态机；直接挂在实体下，状态作为它的子节点。状态机先收集全部状态，再注入状态机与实体并调用一次 `on_setup()`，适合缓存强类型引用或校验长期依赖；`on_enter()` 仍在每次进入状态时执行。状态机自动转发普通帧与物理帧更新，每个状态只需覆写需要的回调。使用 `connect_state_changed()` 连接状态回调，无论连接发生在初始化前后都会同步到初始状态。平台示例的 Idle、Run、Air 共享 `PlatformerState` 基类，分别真正执行移动、跳跃和重力逻辑，而不是空标签。
 - `UFrameBehaviorManager` + `UFrameBehavior`：Manager 直接挂在实体下，Behavior 只放在 Manager 下，节点名就是查询 ID。Manager 不进入逐帧循环，只负责整理层级、注入实体引用和统一启停；行为只需覆写需要的回调，禁用后停止两种帧更新。
 
 ```gdscript

@@ -1,3 +1,4 @@
+class_name UFramePool
 extends Node
 
 ## 通用场景对象池组件
@@ -11,7 +12,6 @@ extends Node
 ##
 ## $BulletPool.release(bullet)
 ## [/codeblock]
-class_name UFramePool
 
 #region 信号
 ## 实例取出完成[br][br]

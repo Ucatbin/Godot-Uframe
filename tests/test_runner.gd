@@ -28,8 +28,23 @@ class LifecycleBehavior extends UFrameBehavior:
 		physics_update_count += 1
 
 class StateUpdateProbe extends UFrameState:
+	var setup_count := 0
+	var enter_count := 0
 	var update_count := 0
 	var physics_update_count := 0
+	var setup_machine: Node
+	var setup_entity: Node
+	var lifecycle_events: Array[String] = []
+
+	func on_setup() -> void:
+		setup_count += 1
+		setup_machine = state_machine
+		setup_entity = entity
+		lifecycle_events.append("setup")
+
+	func on_enter(_data := {}) -> void:
+		enter_count += 1
+		lifecycle_events.append("enter")
 
 	func on_update(_delta: float) -> void:
 		update_count += 1
@@ -962,9 +977,9 @@ func _test_platform_and_loot_scene_composition() -> void:
 	var platform_player := player_scene.instantiate()
 	var machine := platform_player.get_node_or_null("StateMachine") as UFrameStateMachine
 	_expect(machine != null and machine.get_parent() == platform_player, "platform state machine is a direct player component")
-	_expect(machine.get_node_or_null("Idle") is UFrameState, "platform authors Idle state in player scene")
-	_expect(machine.get_node_or_null("Run") is UFrameState, "platform authors Run state in player scene")
-	_expect(machine.get_node_or_null("Air") is UFrameState, "platform authors Air state in player scene")
+	_expect(machine.get_node_or_null("Idle") is Platformer_Base_State, "platform authors Idle state from the shared player state base")
+	_expect(machine.get_node_or_null("Run") is Platformer_Base_State, "platform authors Run state from the shared player state base")
+	_expect(machine.get_node_or_null("Air") is Platformer_Base_State, "platform authors Air state from the shared player state base")
 	_expect(platform_player.has_node("CollisionShape2D") and platform_player.has_node("VisualRoot"), "platform authors collision and visuals in player scene")
 	platform_player.free()
 
@@ -1195,6 +1210,7 @@ func _test_state_machine() -> void:
 	machine.connect_state_changed(early_callback)
 	machine.connect_state_changed(early_callback)
 	var idle_state: StateUpdateProbe
+	var run_state: StateUpdateProbe
 	for state_name in [&"idle", &"run"]:
 		var state := StateUpdateProbe.new()
 		state.name = String(state_name)
@@ -1202,9 +1218,23 @@ func _test_state_machine() -> void:
 		machine.add_child(state)
 		if state_name == &"idle":
 			idle_state = state
+		else:
+			run_state = state
 	owner.add_child(machine)
 	add_child(owner)
 	_expect(machine.is_in_state(&"idle"), "state machine enters initial state")
+	_expect(
+		idle_state.setup_count == 1
+		and run_state.setup_count == 1
+		and idle_state.setup_machine == machine
+		and run_state.setup_entity == owner,
+		"state machine sets up every state once with injected dependencies"
+	)
+	_expect(
+		idle_state.lifecycle_events == ["setup", "enter"]
+		and run_state.lifecycle_events == ["setup"],
+		"state setup completes before the initial state enters"
+	)
 	_expect(
 		early_transitions == [[StringName(), &"idle"]],
 		"state observers connected before initialization receive initial state once"
@@ -1227,6 +1257,12 @@ func _test_state_machine() -> void:
 	_expect(idle_state.physics_update_count > 0, "state machine automatically forwards physics updates")
 	machine.change_state(&"run")
 	_expect(machine.get_current_state_name() == &"run", "state machine changes locally")
+	_expect(
+		idle_state.setup_count == 1
+		and run_state.setup_count == 1
+		and run_state.lifecycle_events == ["setup", "enter"],
+		"state transitions do not repeat one-time setup"
+	)
 	_expect(
 		early_transitions == [[StringName(), &"idle"], [&"idle", &"run"]]
 		and late_transitions == [[StringName(), &"idle"], [&"idle", &"run"]],

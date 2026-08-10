@@ -2,9 +2,9 @@
 
 [ext_resource type="Script" uid="uid://c1acbg5gtgga4" path="res://examples/platformer/platformer_player.gd" id="1_player"]
 [ext_resource type="Script" uid="uid://dvy3m20rsxkdc" path="res://addons/uframe/components/state_machine/StateMachine.gd" id="2_machine"]
-[ext_resource type="Script" uid="uid://d2vcqefqwlmv" path="res://examples/platformer/states/idle_state.gd" id="3_idle"]
-[ext_resource type="Script" uid="uid://bp37r7qfp4mn8" path="res://examples/platformer/states/run_state.gd" id="4_run"]
-[ext_resource type="Script" uid="uid://d2pircbnrpc2a" path="res://examples/platformer/states/air_state.gd" id="5_air"]
+[ext_resource type="Script" uid="uid://d2vcqefqwlmv" path="res://examples/platformer/states/platformer_idle_state.gd" id="3_idle"]
+[ext_resource type="Script" uid="uid://bp37r7qfp4mn8" path="res://examples/platformer/states/platformer_run_state.gd" id="4_run"]
+[ext_resource type="Script" uid="uid://d2pircbnrpc2a" path="res://examples/platformer/states/platformer_air_state.gd" id="5_air"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_player"]
 size = Vector2(26, 38)
