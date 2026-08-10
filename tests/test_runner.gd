@@ -69,6 +69,7 @@ func _ready() -> void:
 	_test_arena_scene_composition()
 	await _test_arena_behavior_runtime()
 	_test_platform_and_loot_scene_composition()
+	await _test_platform_air_state_runtime()
 	_test_spider_scene_composition()
 	await _test_spider_runtime()
 	await _test_camera()
@@ -1000,6 +1001,65 @@ func _test_platform_and_loot_scene_composition() -> void:
 	_expect(loot.get("loot_table") is UFrameLootTable, "loot references configured LootTable resource")
 	_expect((loot.get("item_definitions") as Array).size() == 9 and loot.get("slot_scene") is PackedScene, "loot references item resources and reusable slot scene")
 	loot.free()
+
+func _test_platform_air_state_runtime() -> void:
+	var world := Node2D.new()
+	var floor_body := StaticBody2D.new()
+	var floor_collision := CollisionShape2D.new()
+	var floor_shape := RectangleShape2D.new()
+	floor_shape.size = Vector2(400, 20)
+	floor_collision.shape = floor_shape
+	floor_body.position = Vector2(200, 220)
+	floor_body.add_child(floor_collision)
+	world.add_child(floor_body)
+
+	var player_scene := load("res://examples/platformer/platformer_player.tscn") as PackedScene
+	var player := player_scene.instantiate() as PlatformerPlayer
+	player.position = Vector2(200, 120)
+	player.controls_enabled = false
+	world.add_child(player)
+	add_child(world)
+
+	var transitions: Array = []
+	player.sm.state_changed.connect(
+		func(previous: StringName, current: StringName) -> void:
+			transitions.append([previous, current])
+	)
+	# physics_frame 在节点物理回调前发出；等待两次后才完成一次实际更新。
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_expect(
+		not player.is_on_floor() and player.sm.is_in_state(&"air") and transitions.is_empty(),
+		"platform Air remains active during an airborne physics update"
+	)
+	for _frame in 90:
+		await get_tree().physics_frame
+		if player.is_on_floor() and player.sm.is_in_state(&"idle"):
+			break
+	_expect(player.is_on_floor(), "platform player reaches the authored test floor")
+	_expect(
+		transitions == [[&"air", &"idle"]],
+		"platform Air remains active while airborne and changes to Idle only after landing"
+	)
+
+	player.position = Vector2(200, 120)
+	player.velocity = Vector2.ZERO
+	player.sm.change_state(&"air")
+	transitions.clear()
+	player.controls_enabled = true
+	Input.action_press(&"demo_move_right")
+	for _frame in 90:
+		await get_tree().physics_frame
+		if player.is_on_floor() and player.sm.is_in_state(&"run"):
+			break
+	Input.action_release(&"demo_move_right")
+	_expect(player.is_on_floor(), "platform player reaches the test floor while moving")
+	_expect(
+		transitions == [[&"air", &"run"]],
+		"platform Air changes to Run only after landing with horizontal input"
+	)
+	world.queue_free()
+	await get_tree().process_frame
 
 
 func _test_spider_scene_composition() -> void:

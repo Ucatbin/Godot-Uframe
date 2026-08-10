@@ -33,12 +33,15 @@ func on_physics_update(delta: float) -> void:
 	# 移动前的垂直速度；move_and_slide() 可能会在碰撞后修改 velocity
 	var vertical_speed_before_move := player.velocity.y
 	player.move_and_slide()
+	# 移动后仍未接触地面时继续保持 Air，不能提前进入地面状态
+	if not player.is_on_floor():
+		return
+
+	# 落地反馈只在本帧首次接触地面时触发
+	if not was_on_floor and vertical_speed_before_move > 0.0:
+		player.emit_land_feedback(vertical_speed_before_move)
 	if is_zero_approx(player.move_axis):
 		state_machine.change_state(&"idle")
 	else:
 		state_machine.change_state(&"run")
-
-	if not was_on_floor and player.is_on_floor():
-		if vertical_speed_before_move > 0.0:
-			player.emit_land_feedback(vertical_speed_before_move)
 #endregion
