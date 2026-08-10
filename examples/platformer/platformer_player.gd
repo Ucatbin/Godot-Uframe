@@ -206,7 +206,7 @@ func _update_visual(delta: float) -> void:
 func _on_state_changed(_previous: StringName, current: StringName) -> void:
 	_apply_state_visual(current)
 
-## 应用状态颜色
+## 状态切换时视觉效果
 func _apply_state_visual(state: StringName) -> void:
 	var color := Color("#5ca8ff")
 	if state == &"run":
@@ -216,7 +216,7 @@ func _apply_state_visual(state: StringName) -> void:
 	body_polygon.color = color
 	highlight_polygon.color = color.lightened(0.18)
 
-## 播放起跳粒子、身体拉伸与轻微相机震动
+## 跳跃时视觉效果
 func _emit_jump_feedback() -> void:
 	_spawn_dust(
 		global_position + Vector2(0, 17),
@@ -231,7 +231,7 @@ func _emit_jump_feedback() -> void:
 	if UFrame.camera:
 		UFrame.camera.add_trauma(0.08)
 
-## 根据落地速度播放不同强度的粒子、身体挤压与相机震动
+## 落地时视觉效果
 func _emit_land_feedback(impact_speed: float) -> void:
 	var strength := clampf(impact_speed / 760.0, 0.25, 1.0)
 	_spawn_dust(
@@ -247,7 +247,7 @@ func _emit_land_feedback(impact_speed: float) -> void:
 	if UFrame.camera:
 		UFrame.camera.add_trauma(0.10 + 0.12 * strength)
 
-## 从关卡级对象池获取一个爆发特效，并传入实际方向与继承速度
+## 尘埃特效
 func _spawn_dust(
 	origin: Vector2,
 	color: Color,
@@ -263,7 +263,7 @@ func _spawn_dust(
 	if effect:
 		effect.burst(origin, color, direction, amount, speed, spread, Vector2(0, 250), 0.48, 2.6, inherited_velocity)
 
-## 立即设置身体形变，再通过 Tween 回弹到正常比例
+## 玩家身体形变效果
 func _animate_body(target_scale: Vector2, duration: float) -> void:
 	if _body_tween and _body_tween.is_valid():
 		_body_tween.kill()

@@ -5,10 +5,10 @@ extends UFrameState
 ## 负责玩家的空中操控、土狼跳、可变跳高、重力、落地反馈与状态切换
 
 #region 状态回调
-## 进入空中状态时清除上一轮奔跑累计的脚步距离
 func on_enter(_data := {}) -> void:
 	# 状态机注入的玩家实体
 	var player := entity as PlatformerPlayer
+	# 进入空中状态时清除上一轮奔跑累计的脚步距离
 	if player:
 		player.reset_walk_feedback()
 
