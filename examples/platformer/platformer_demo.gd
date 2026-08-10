@@ -55,14 +55,17 @@ var _changing_scene := false
 #region 生命周期
 ## 注入关卡级依赖、连接玩法信号并初始化相机与界面
 func _ready() -> void:
-	# Player 场景可以独立打开，因此由关卡根节点注入世界级对象池。
+	# 为玩家注入依赖
 	player.effect_pool = effect_pool
 	player.jumped.connect(_on_player_jumped)
 	player.landed.connect(_on_player_landed)
 	player.fell.connect(_on_player_fell)
+	# 为场景注入依赖
 	goal.body_entered.connect(_on_goal_body_entered)
+
 	_style_static_ui()
 	get_viewport().size_changed.connect(queue_redraw)
+
 	if UFrame.camera:
 		UFrame.camera.set_camera(camera)
 		UFrame.camera.configure_shake(Vector2(8, 6), 0.9, 3.0, 2.0)
@@ -70,12 +73,17 @@ func _ready() -> void:
 
 ## 更新返回菜单输入、HUD 数据、程序化动画时间与相机前瞻跟随
 func _process(delta: float) -> void:
+	# 返回菜单输入
 	if Input.is_action_just_pressed(&"ui_cancel"):
 		_return_to_menu()
 		return
+
+	# 更新程序化动画
 	_world_time += delta
 	queue_redraw()
 	_animate_goal()
+
+	# 更新 HUD 数据
 	state_label.text = "状态  %s" % _state_display_name(player.sm.get_current_state_name())
 	jump_bar.value = player.get_jump_hold_ratio() * 100.0
 	detail_label.text = "土狼时间 %.2fs  ·  完成 %d 次  ·  特效池 %d / %d" % [
@@ -84,6 +92,8 @@ func _process(delta: float) -> void:
 		effect_pool.get_active_count(),
 		effect_pool.get_total_count(),
 	]
+
+	# 更新相机偏移
 	var look_ahead := Vector2(player.velocity.x * 0.055, player.velocity.y * 0.018)
 	var follow_weight := 1.0 - exp(-9.0 * delta)
 	camera.position = camera.position.lerp(get_viewport_rect().size * 0.5 + look_ahead, follow_weight)
@@ -95,14 +105,18 @@ func _on_goal_body_entered(body: Node2D) -> void:
 	if body == player:
 		_complete_level()
 
-## 锁定玩家、播放终点反馈，并在短暂停顿后复位关卡
+## 通关结算
 func _complete_level() -> void:
 	if _completing:
 		return
 	_completing = true
 	completions += 1
+
+	# 锁定玩家
 	player.controls_enabled = false
 	player.velocity = Vector2.ZERO
+
+	# 完成后反馈
 	for direction in [Vector2.UP, Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT]:
 		var effect := effect_pool.acquire() as DemoBurstEffect
 		if effect:
@@ -111,6 +125,8 @@ func _complete_level() -> void:
 	if UFrame.camera:
 		UFrame.camera.add_trauma(0.36)
 	_animate_camera_zoom(Vector2(1.045, 1.045), 0.14)
+
+	# 玩家重置
 	await get_tree().create_timer(0.85).timeout
 	player.reset_to_spawn()
 	player.controls_enabled = true
@@ -180,7 +196,7 @@ func _style_static_ui() -> void:
 	UI.style_label(detail_label, 12, UI.MUTED)
 	UI.style_label(message_label, 14)
 
-## 根据累计时间更新终点旗帜摆动与光圈呼吸动画
+## 更新终点旗帜摆动与光圈呼吸动画
 func _animate_goal() -> void:
 	var wave := sin(_world_time * 4.0)
 	goal_flag.rotation = wave * 0.045

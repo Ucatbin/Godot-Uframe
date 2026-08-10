@@ -144,6 +144,7 @@ position = Vector2(544, 235)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="World/Step05" unique_id=1883081039]
 shape = SubResource("RectangleShape2D_step_3")
+one_way_collision = true
 
 [node name="Shadow" type="Polygon2D" parent="World/Step05" unique_id=666865993]
 position = Vector2(0, 7)
