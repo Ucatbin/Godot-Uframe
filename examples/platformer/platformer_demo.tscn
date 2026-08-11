@@ -190,14 +190,44 @@ shape = SubResource("RectangleShape2D_goal")
 unique_name_in_owner = true
 position = Vector2(70, 525)
 
+[node name="Background" type="Polygon2D" parent="World" unique_id=913149500]
+z_index = -1
+position = Vector2(0, -64)
+scale = Vector2(1, 1.0909091)
+color = Color(0.050980393, 0.09019608, 0.14901961, 1)
+polygon = PackedVector2Array(-64, 0, -72, 704, 1024, 704, 1024, 0)
+
 [node name="HUD" type="CanvasLayer" parent="." unique_id=1572858380]
 layer = 10
+
+[node name="MessagePanel" type="PanelContainer" parent="HUD" unique_id=611710591]
+unique_name_in_owner = true
+modulate = Color(1, 1, 1, 0)
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -68.0
+offset_right = 300.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="MessageLabel" type="Label" parent="HUD/MessagePanel" unique_id=1366345962]
+unique_name_in_owner = true
+layout_mode = 2
+text = "A / D 移动 · 空格短按低跳、长按高跳 · 到达右上方旗帜"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="TopMargin" type="MarginContainer" parent="HUD" unique_id=680440084]
 anchors_preset = 10
 anchor_right = 1.0
-offset_bottom = 88.0
+offset_bottom = 66.0
 grow_horizontal = 2
+size_flags_horizontal = 3
 theme_override_constants/margin_left = 18
 theme_override_constants/margin_top = 14
 theme_override_constants/margin_right = 18
@@ -263,25 +293,3 @@ text = "状态  AIR / 空中"
 unique_name_in_owner = true
 layout_mode = 2
 text = "土狼时间 0.00s  ·  完成 0 次  ·  特效池 0 / 14"
-
-[node name="MessagePanel" type="PanelContainer" parent="HUD" unique_id=611710591]
-unique_name_in_owner = true
-modulate = Color(1, 1, 1, 0)
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -300.0
-offset_top = -68.0
-offset_right = 300.0
-offset_bottom = -20.0
-grow_horizontal = 2
-grow_vertical = 0
-
-[node name="MessageLabel" type="Label" parent="HUD/MessagePanel" unique_id=1366345962]
-unique_name_in_owner = true
-layout_mode = 2
-text = "A / D 移动 · 空格短按低跳、长按高跳 · 到达右上方旗帜"
-horizontal_alignment = 1
-vertical_alignment = 1

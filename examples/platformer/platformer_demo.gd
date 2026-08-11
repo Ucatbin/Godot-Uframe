@@ -65,7 +65,7 @@ func _ready() -> void:
 
 	_style_static_ui()
 	get_viewport().size_changed.connect(queue_redraw)
-
+	# 相机动画
 	if UFrame.camera:
 		UFrame.camera.set_camera(camera)
 		UFrame.camera.configure_shake(Vector2(8, 6), 0.9, 3.0, 2.0)
@@ -77,12 +77,10 @@ func _process(delta: float) -> void:
 	if Input.is_action_just_pressed(&"ui_cancel"):
 		_return_to_menu()
 		return
-
 	# 更新程序化动画
 	_world_time += delta
 	queue_redraw()
 	_animate_goal()
-
 	# 更新 HUD 数据
 	state_label.text = "状态  %s" % _state_display_name(player.sm.get_current_state_name())
 	jump_bar.value = player.get_jump_hold_ratio() * 100.0
@@ -92,7 +90,6 @@ func _process(delta: float) -> void:
 		effect_pool.get_active_count(),
 		effect_pool.get_total_count(),
 	]
-
 	# 更新相机偏移
 	var look_ahead := Vector2(player.velocity.x * 0.055, player.velocity.y * 0.018)
 	var follow_weight := 1.0 - exp(-9.0 * delta)
@@ -111,11 +108,9 @@ func _complete_level() -> void:
 		return
 	_completing = true
 	completions += 1
-
 	# 锁定玩家
 	player.controls_enabled = false
 	player.velocity = Vector2.ZERO
-
 	# 完成后反馈
 	for direction in [Vector2.UP, Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT]:
 		var effect := effect_pool.acquire() as DemoBurstEffect
@@ -125,7 +120,6 @@ func _complete_level() -> void:
 	if UFrame.camera:
 		UFrame.camera.add_trauma(0.36)
 	_animate_camera_zoom(Vector2(1.045, 1.045), 0.14)
-
 	# 玩家重置
 	await get_tree().create_timer(0.85).timeout
 	player.reset_to_spawn()
@@ -157,16 +151,13 @@ func _return_to_menu() -> void:
 #region 视觉
 ## 使用绘制命令生成无需额外场景节点的星空、山体与云层
 func _draw() -> void:
-	var size := get_viewport_rect().size
-	var overscan := 120.0
-	draw_rect(Rect2(Vector2(-overscan, -overscan), size + Vector2.ONE * overscan * 2.0), Color("#0d1726"))
-	# 远景星点是纯装饰性程序化图形，不需要膨胀场景树。
+	# 星
 	for index in 48:
 		var point := Vector2((index * 83) % 1080 - 40, 80 + (index * 47) % 330)
 		draw_circle(point, 1.2 + index % 2, Color(Color("#c6e1ff"), 0.42))
 	draw_circle(Vector2(724, 128), 52.0, Color("#ffdc82"))
 	draw_circle(Vector2(707, 114), 52.0, Color("#0d1726"))
-	# 两层山体形成低成本景深。
+	# 山
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(-120, 520), Vector2(80, 330), Vector2(220, 470), Vector2(390, 290),
 		Vector2(560, 475), Vector2(735, 320), Vector2(1080, 520),
@@ -175,7 +166,7 @@ func _draw() -> void:
 		Vector2(-120, 555), Vector2(160, 410), Vector2(330, 525), Vector2(520, 390),
 		Vector2(700, 520), Vector2(875, 405), Vector2(1080, 550),
 	]), Color("#20364d"))
-	# 云只是一组绘制命令；实际玩法节点仍全部显式保留在 tscn 中。
+	# 云
 	for index in 4:
 		var cloud_x := fmod(index * 260.0 + _world_time * (8.0 + index), 1120.0) - 80.0
 		var cloud_y := 112.0 + index * 48.0
