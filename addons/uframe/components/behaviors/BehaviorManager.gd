@@ -1,9 +1,10 @@
 extends Node
 
-## 可组合行为管理组件
+## 可组合行为管理组件。
 ##
-## 将多个 [UFrameBehavior] 作为直属子节点，并把管理器与所属实体引用注入行为[br]
-## 管理器本身不参与逐帧更新，每个启用的行为使用自己的 Godot 回调
+## 负责绑定直属 [UFrameBehavior]、注入所属实体，并提供按节点名查询和统一启停入口。
+## 不负责逐帧更新或行为互斥；每个 Behavior 使用自身回调，互斥逻辑交给 [UFrameStateMachine]。
+## 打开 [code]examples/arena/arena_player.tscn[/code] 可查看 Manager 与 Behavior 的场景树组合。
 class_name UFrameBehaviorManager
 
 #region 生命周期
@@ -15,11 +16,9 @@ func _enter_tree() -> void:
 			_bind_behavior(child)
 #endregion
 
-#region 主要方法
-## [b]设置指定行为[/b][br]
-## 成功返回 [code]true[/code]，名称不存在时返回 [code]false[/code][br][br]
-## [param behavior_name] : 行为节点名[br]
-## [param value] : 是否启用行为
+#region 行为控制
+## 设置指定行为是否启用。
+## [param behavior_name] 是行为节点名，[param value] 是新的启用状态；找不到时返回 [code]false[/code]。
 func set_behavior_enabled(behavior_name: StringName, value: bool) -> bool:
 	var behavior := get_behavior(behavior_name)
 	if behavior == null:
@@ -28,43 +27,35 @@ func set_behavior_enabled(behavior_name: StringName, value: bool) -> bool:
 	behavior.enabled = value
 	return true
 
-## [b]设置全部行为[/b][br][br]
-## [param value] : 是否启用全部直属行为
+## 设置全部直属行为是否启用。[param value] 是统一写入的启用状态。
 func set_all_enabled(value: bool) -> void:
 	for child in get_children():
 		if child is UFrameBehavior:
 			child.enabled = value
 #endregion
 
-#region 查询方法
-## [b]按名称获取行为[/b][br]
-## 找不到或直属子节点不是 [UFrameBehavior] 时返回 [code]null[/code][br][br]
-## [param behavior_name] : 行为节点名
+#region 行为查询
+## 按节点名获取直属行为；找不到或节点类型不符时返回 [code]null[/code]。
 func get_behavior(behavior_name: StringName) -> UFrameBehavior:
 	for child in get_children():
 		if child.name == behavior_name and child is UFrameBehavior:
 			return child
 	return null
 
-## [b]判断行为是否存在[/b][br][br]
-## [param behavior_name] : 行为节点名
+## 判断是否存在名为 [param behavior_name] 的直属行为。
 func has_behavior(behavior_name: StringName) -> bool:
 	return get_behavior(behavior_name) != null
 #endregion
 
-#region 内部方法
-## [b]处理直属子节点进入[/b][br]
-## 非行为节点会发出警告[br][br]
-## [param child] : 新进入场景树的直属子节点
+#region 行为绑定
+## 处理直属子节点进入；[param child] 不是 [UFrameBehavior] 时发出警告。
 func _on_child_entered_tree(child: Node) -> void:
 	if child is UFrameBehavior:
 		_bind_behavior(child)
 	else:
 		push_warning("[UFrameBehaviorManager] 直属子节点 %s 不是 UFrameBehavior" % child.name)
 
-## [b]注入行为引用[/b][br]
-## 仅处理当前管理器的直属子节点[br][br]
-## [param child] : 需要绑定的行为
+## 向直属 [param child] 注入当前管理器及其所属实体。
 func _bind_behavior(child: UFrameBehavior) -> void:
 	if child.get_parent() != self:
 		return

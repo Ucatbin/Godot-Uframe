@@ -2,12 +2,13 @@ extends Resource
 
 ## 单项属性修正资源
 ##
-## 与 [UFrameStats] 配合使用，按优先级对一个属性执行加法、乘法、百分比或覆盖运算[br]
-## [member duration] 为负数时永久生效，非负数时由 [UFrameStats] 自动计时并移除
+## 在 Inspector 中配置并交给 [UFrameStats] 使用，按优先级对一个属性执行一种运算。
+## 本 Resource 不自行计时；[member duration] 非负时由 [UFrameStats] 记录经过时间并移除。
+## 加入 Stats 后应视为不可变；需要修改配置时先移除，修改完成后再重新加入。
 class_name UFrameStatModifier
 
 #region 枚举
-## [b]属性运算类型[/b]
+## 属性运算类型。
 enum Op {
 	ADD,        ## 加法：[code]stat += value[/code]
 	MULTIPLY,   ## 乘法：[code]stat *= value[/code]
@@ -16,32 +17,28 @@ enum Op {
 }
 #endregion
 
-#region 配置
-## [b]目标属性名[/b]
+#region Inspector 配置
+## 目标属性名。
 @export var stat_name: String = ""
 
-## [b]运算类型[/b]
+## 运算类型。
 @export var operation: Op = Op.ADD
 
-## [b]修改值[/b]
+## 修改值。
 @export var value: float = 0.0
 
-## [b]优先级[/b][br]
-## 数值越小越先计算
+## 优先级；数值越小越先计算。
 @export var priority: int = 0
 
-## [b]来源名称[/b][br]
-## 用于调试、显示或批量移除，例如 [code]火焰剑附魔[/code]
+## 来源名称，用于调试、显示或批量移除，例如 [code]火焰剑附魔[/code]。
 @export var source_name: String = ""
 
-## [b]持续时间（秒）[/b][br]
-## 负数表示永久，[code]0[/code] 表示立即过期
+## 持续时间（秒）；负数表示永久，[code]0[/code] 表示立即过期。
 @export var duration: float = -1.0
 #endregion
 
 #region 主要方法
-## [b]应用属性修正[/b][br][br]
-## [param base_value] : 应用本项修正前的属性值
+## 对 [param base_value] 应用当前运算并返回结果。
 func apply(base_value: float) -> float:
 	match operation:
 		Op.ADD:
@@ -54,9 +51,8 @@ func apply(base_value: float) -> float:
 			return value
 	return base_value
 
-## [b]反向计算属性值[/b][br]
-## 覆盖运算无法还原原值，仅返回传入值[br][br]
-## [param current_value] : 应用本项修正后的属性值
+## 对 [param current_value] 反向应用当前运算并返回结果。
+## 覆盖运算无法还原原值，因此只返回传入值。
 func revert(current_value: float) -> float:
 	match operation:
 		Op.ADD:
@@ -66,15 +62,14 @@ func revert(current_value: float) -> float:
 		Op.PERCENT:
 			return current_value / (1.0 + value)
 		Op.OVERRIDE:
-			return current_value  # 无法还原
+			return current_value
 	return current_value
 #endregion
 
 #region 查询方法
-## [b]判断是否过期[/b][br][br]
-## [param elapsed] : 本项修正已经生效的秒数
+## 判断本项修正是否已经在 [param elapsed] 秒后过期。
 func is_expired(elapsed: float) -> bool:
 	if duration < 0.0:
-		return false          # -1 = 永久
+		return false
 	return elapsed >= duration
 #endregion

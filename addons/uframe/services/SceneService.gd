@@ -2,41 +2,36 @@ extends Node
 
 ## 可选场景管理服务
 ##
-## 通过 [code]UFrame.scenes[/code] 使用，统一管理主场景切换与叠加场景[br]
-## [method change_scene] 立即提交普通切换，[method change_scene_async] 在线程中加载大场景[br]
-## 只有新场景真正成为 [member SceneTree.current_scene] 后才发出 [signal scene_changed]
+## 通过 [code]UFrame.scenes[/code] 使用，统一管理主场景切换与叠加场景。
+## [method change_scene] 立即提交普通切换，[method change_scene_async] 在线程中加载大场景。
+## 本服务不负责画面遮罩；需要淡变效果时由 [UFrameTransition] 编排。
+## 只有新场景真正成为 [member SceneTree.current_scene] 后才发出 [signal scene_changed]。
 class_name UFrameSceneService
 
 #region 常量
-## [b]场景确认最大帧数[/b][br]
-## Godot 在帧边界完成场景替换，因此同步切换使用有限帧数确认最终结果
+## 场景切换确认的最大等待帧数。
+## Godot 在帧边界完成场景替换，因此同步切换需要有限帧数确认最终结果。
 const SCENE_CONFIRMATION_MAX_FRAMES := 16
 #endregion
 
 #region 信号
-## [b]场景即将切换[/b][br]
-## 请求通过路径验证、即将提交时发出[br][br]
-## [param from] : 当前主场景路径[br]
-## [param to] : 目标主场景路径
+## 请求通过路径验证、即将提交时发出。
+## [param from] 是当前主场景路径，[param to] 是目标主场景路径。
 signal scene_changing(from: String, to: String)
 
-## [b]场景切换完成[/b][br]
-## 新场景已经成为 [member SceneTree.current_scene] 时发出[br][br]
-## [param new_scene] : 新主场景路径
+## 新场景已经成为 [member SceneTree.current_scene] 时发出。
+## [param new_scene] 是已经确认生效的新主场景路径。
 signal scene_changed(new_scene: String)
 #endregion
 
 #region 运行时状态
-## [b]当前主场景路径[/b][br]
-## 仅在确认切换完成后更新
+## 当前主场景路径，仅在确认切换完成后更新。
 var current_scene_path := ""
 
-## [b]叠加场景表[/b][br][br]
-## [color=cyan]映射：[/color]场景路径 → 当前主场景下的实例。
+## 叠加场景表：场景路径 → 当前主场景下的实例。
 var _overlay_scenes: Dictionary[String, Node] = {}
 
-## [b]场景请求代次[/b][br]
-## 新请求会使仍在等待的旧请求返回 [constant ERR_SKIP]
+## 场景请求代次；新请求会使仍在等待的旧请求返回 [constant ERR_SKIP]。
 var _request_generation := 0
 #endregion
 
@@ -48,9 +43,7 @@ func _ready() -> void:
 #endregion
 
 #region 主要方法
-## [b]请求普通场景切换[/b][br]
-## 返回 Godot [Error]；成功提交后可等待 [signal scene_changed][br][br]
-## [param path] : 目标场景路径
+## 提交普通场景切换并返回 Godot [code]Error[/code]；成功提交后可等待 [signal scene_changed]。
 func change_scene(path: String) -> Error:
 	var request := _submit_scene_change(path)
 	var error: Error = request.error
@@ -58,9 +51,7 @@ func change_scene(path: String) -> Error:
 		_confirm_scene_change.call_deferred(path, int(request.generation))
 	return error
 
-## [b]切换并确认场景[/b][br]
-## 等待新场景真正成为 [member SceneTree.current_scene]，适合必须取得最终结果的系统[br][br]
-## [param path] : 目标场景路径
+## 切换并等待目标真正成为 [member SceneTree.current_scene]，返回最终 Godot [code]Error[/code]。
 func change_scene_confirmed(path: String) -> Error:
 	var request := _submit_scene_change(path)
 	var error: Error = request.error
@@ -68,10 +59,8 @@ func change_scene_confirmed(path: String) -> Error:
 		return error
 	return await _confirm_scene_change(path, int(request.generation))
 
-## [b]异步切换场景[/b][br]
-## 在线程中加载场景；返回 [constant OK] 表示新场景已经成为当前主场景[br][br]
-## [param path] : 目标场景路径[br]
-## [param on_progress] : 可选的加载进度回调，参数范围为 [code]0.0[/code] 到 [code]1.0[/code]
+## 在线程中加载并切换场景；返回 [constant OK] 表示新场景已经成为当前主场景。
+## [param on_progress] 是可选加载进度回调，参数范围为 [code]0.0[/code] 到 [code]1.0[/code]。
 func change_scene_async(path: String, on_progress: Callable = Callable()) -> Error:
 	if not _is_valid_scene_path(path):
 		return ERR_FILE_NOT_FOUND
@@ -111,16 +100,15 @@ func change_scene_async(path: String, on_progress: Callable = Callable()) -> Err
 		await get_tree().process_frame
 	return ERR_SKIP
 
-## [b]重新加载当前场景[/b]
+## 重新加载当前主场景；没有可用路径时返回 [constant ERR_DOES_NOT_EXIST]。
 func reload_current() -> Error:
 	var path := current_scene_path
 	if path.is_empty() and get_tree().current_scene:
 		path = get_tree().current_scene.scene_file_path
 	return change_scene(path) if not path.is_empty() else ERR_DOES_NOT_EXIST
 
-## [b]添加叠加场景[/b][br]
-## 在当前主场景下实例化；同一路径已有有效实例时直接返回原实例[br][br]
-## [param path] : 叠加场景路径
+## 在当前主场景下添加叠加场景；同一路径已有有效实例时直接返回原实例。
+## 路径无效、加载失败或没有当前主场景时返回 [code]null[/code]。
 func add_scene(path: String) -> Node:
 	if _overlay_scenes.has(path) and is_instance_valid(_overlay_scenes[path]):
 		return _overlay_scenes[path]
@@ -138,9 +126,7 @@ func add_scene(path: String) -> Node:
 	, CONNECT_ONE_SHOT)
 	return instance
 
-## [b]移除叠加场景[/b][br]
-## 目标存在时排队释放并返回 [code]true[/code][br][br]
-## [param path] : 叠加场景路径
+## 移除叠加场景；目标存在时排队释放并返回 [code]true[/code]。
 func remove_scene(path: String) -> bool:
 	var instance := _overlay_scenes.get(path) as Node
 	if not is_instance_valid(instance):
@@ -152,9 +138,7 @@ func remove_scene(path: String) -> bool:
 #endregion
 
 #region 内部方法
-## [b]提交普通场景切换[/b][br]
-## 返回 [code]error[/code] 与本次请求 [code]generation[/code][br][br]
-## [param path] : 目标场景路径
+## 提交普通场景切换，返回 [code]error[/code] 与本次请求的 [code]generation[/code]。
 func _submit_scene_change(path: String) -> Dictionary:
 	if not _is_valid_scene_path(path):
 		return {"error": ERR_FILE_NOT_FOUND, "generation": _request_generation}
@@ -169,13 +153,9 @@ func _submit_scene_change(path: String) -> Dictionary:
 	_clear_overlay_records()
 	return {"error": OK, "generation": generation}
 
-## [b]确认场景切换结果[/b][br]
-## 在有限帧数内确认目标已经成为当前场景；请求被覆盖时返回 [constant ERR_SKIP][br][br]
-## [param path] : 目标场景路径[br]
-## [param generation] : 本次请求代次
+## 在有限帧数内确认目标已经成为当前场景；请求被覆盖时返回 [constant ERR_SKIP]。
 func _confirm_scene_change(path: String, generation: int) -> Error:
-	# 场景切换的提交点位于帧边界。有限轮询既兼容不同渲染后端，
-	# 又能在请求被覆盖或引擎没有完成切换时明确返回错误。
+	# 场景切换在帧边界提交；有限轮询兼容不同后端，也确保失败时能返回明确错误
 	for attempt in range(SCENE_CONFIRMATION_MAX_FRAMES + 1):
 		if generation != _request_generation:
 			return ERR_SKIP
@@ -188,23 +168,19 @@ func _confirm_scene_change(path: String, generation: int) -> Error:
 	push_error("[UFrameSceneService] 等待新场景超时：%s" % path)
 	return ERR_TIMEOUT
 
-## [b]判断当前场景是否匹配[/b][br][br]
-## [param path] : 目标场景路径
+## 判断当前主场景是否匹配目标路径。
 func _current_scene_matches(path: String) -> bool:
 	var current := get_tree().current_scene
 	return current != null and current.scene_file_path == path
 
-## [b]检查场景路径[/b][br]
-## 空路径或无法作为 [PackedScene] 加载时返回 [code]false[/code][br][br]
-## [param path] : 需要检查的场景路径
+## 检查场景路径；空路径或无法作为 [PackedScene] 加载时返回 [code]false[/code]。
 func _is_valid_scene_path(path: String) -> bool:
 	if path.is_empty() or not ResourceLoader.exists(path, "PackedScene"):
 		push_error("[UFrameSceneService] 场景不存在：%s" % path)
 		return false
 	return true
 
-## [b]清理叠加场景记录[/b][br]
-## 主场景切换会统一释放叠加节点，本方法只清理持有的引用
+## 清理叠加场景记录；主场景切换会统一释放节点，本方法只清理持有的引用。
 func _clear_overlay_records() -> void:
 	_overlay_scenes.clear()
 #endregion

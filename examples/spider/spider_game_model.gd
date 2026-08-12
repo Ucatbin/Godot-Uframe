@@ -1,10 +1,9 @@
-class_name SpiderGameModel
 extends RefCounted
 
 ## 蜘蛛纸牌的纯规则模型，支持单花色、双花色与四花色三种标准难度。
 ##
-## 本类不继承 Node，也不认识卡牌 View、Tween 或鼠标输入。因此它可以用 `.new()`
-## 独立测试；示例场景只负责把这里的数组状态显示成可拖动的卡牌。
+## 本类不继承 Node，也不认识卡牌 View、Tween 或鼠标输入。因此它可以用
+## [code].new()[/code] 独立测试；spider_demo.tscn 只负责把数组状态显示成可拖动的卡牌。
 ##
 ## 卡牌使用轻量 Dictionary：
 ## `{ "id": 唯一编号, "rank": 1 到 13, "suit": 0 到 3, "face_up": 是否翻开 }`。
@@ -12,7 +11,9 @@ extends RefCounted
 ##
 ## 花色只用整数保存，避免模型依赖任何贴图或文字：0/1/2/3 分别由 View 决定
 ## 显示成哪一种图案。难度为 1 时只使用 0；难度为 2 时使用 0、1；四花色全部使用。
+class_name SpiderGameModel
 
+#region 规则常量
 const COLUMN_COUNT := 10
 const CARDS_PER_RUN := 13
 const TOTAL_RUNS := 8
@@ -21,24 +22,30 @@ const INITIAL_SCORE := 500
 const VALID_SUIT_COUNTS := [1, 2, 4]
 ## 快照撤销最容易读懂且只有 104 张牌；仍设置上限，避免超长挂机牌局无限占用内存。
 const MAX_UNDO_STEPS := 256
+#endregion
 
+#region 牌局状态
 ## 十个纵列。列内顺序从底牌到顶牌，数组末尾就是玩家看到的最上方卡牌。
 var columns: Array[Array] = []
 ## 尚未发出的牌；每次从数组末尾取十张，依次放到十列顶部。
 var stock: Array[Dictionary] = []
+## 已经收齐并移出桌面的同花色 K 到 A 组数。
 var completed_runs := 0
+## 当前牌局已经提交的移动与发牌次数。
 var move_count := 0
+## 当前分数；移动会扣分，完成整组会加分。
 var score := INITIAL_SCORE
-## 当前牌局使用的花色数量。请通过 new_game() 切换难度，不要在牌局中途直接改写。
+## 当前牌局使用的花色数量。请通过 [method new_game] 切换难度，不要在牌局中途直接改写。
 var suit_count := 1
 
 var _history: Array[Dictionary] = []
 var _rng := RandomNumberGenerator.new()
+#endregion
 
-
+#region 牌局创建
 ## 建立一局标准蜘蛛纸牌。传入 0 或其他非负 seed 可稳定复现；-1 表示随机。
-## suit_count_value 只接受 1、2、4；非法值回退为单花色，保证模型不会进入半合法状态。
-func new_game(seed_value := -1, suit_count_value := 1) -> void:
+## [param suit_count_value] 只接受 1、2、4；非法值回退为单花色，保证模型不会进入半合法状态。
+func new_game(seed_value: int = -1, suit_count_value: int = 1) -> void:
 	columns.clear()
 	stock.clear()
 	_history.clear()
@@ -85,14 +92,14 @@ func new_game(seed_value := -1, suit_count_value := 1) -> void:
 
 	# 剩余 50 张就是五次发牌。复制引用没有必要，牌 Dictionary 已各自唯一。
 	stock.assign(deck)
+#endregion
 
-
+#region 移动与发牌
 ## 判断从某列的 start_index 开始，到该列顶部的整组牌能否移到目标列。
 func can_move(from_column: int, start_index: int, to_column: int) -> bool:
 	return _move_error(from_column, start_index, to_column).is_empty()
 
-
-## 执行一次拖牌。失败不会改变模型；成功会保存完整快照供 undo() 恢复。
+## 执行一次拖牌。失败不会改变模型；成功会保存完整快照供 [method undo] 恢复。
 func move_stack(from_column: int, start_index: int, to_column: int) -> Dictionary:
 	var reason := _move_error(from_column, start_index, to_column)
 	if not reason.is_empty():
@@ -122,7 +129,6 @@ func move_stack(from_column: int, start_index: int, to_column: int) -> Dictionar
 
 	return _result(true, "", moved_ids, flipped_ids, removed_ids, completed_delta)
 
-
 ## 只有库存足够且十列都非空时才能发牌，这是标准蜘蛛纸牌的重要限制。
 func can_deal() -> bool:
 	if stock.size() < STOCK_DEAL_SIZE or is_won():
@@ -131,7 +137,6 @@ func can_deal() -> bool:
 		if column.is_empty():
 			return false
 	return true
-
 
 ## 向十列各发一张正面牌，并检查发牌后是否出现完整序列。
 func deal_stock() -> Dictionary:
@@ -159,11 +164,12 @@ func deal_stock() -> Dictionary:
 		_collect_completed_runs(column_index, flipped_ids, removed_ids)
 	var completed_delta := removed_ids.size() / CARDS_PER_RUN
 	return _result(true, "", dealt_ids, flipped_ids, removed_ids, completed_delta)
+#endregion
 
-
+#region 撤销
+## 是否存在可以恢复的动作快照。
 func can_undo() -> bool:
 	return not _history.is_empty()
-
 
 ## 撤销严格恢复动作前的列、库存、翻面、完成数、步数和分数。
 func undo() -> Dictionary:
@@ -172,15 +178,16 @@ func undo() -> Dictionary:
 	var previous_state := _history.pop_back() as Dictionary
 	_apply_state(previous_state)
 	return _result(true, "")
+#endregion
 
-
+#region 规则查询
+## 八组同花色 K 到 A 全部收齐后返回 true。
 func is_won() -> bool:
 	return completed_runs >= TOTAL_RUNS
 
-
+## 返回库存仍可向十列发牌的次数。
 func get_stock_deals_remaining() -> int:
 	return stock.size() / STOCK_DEAL_SIZE
-
 
 ## 返回某张唯一 ID 的位置，供薄控制器把 View 映射回规则模型。
 func find_card(card_id: int) -> Dictionary:
@@ -189,7 +196,6 @@ func find_card(card_id: int) -> Dictionary:
 			if int(columns[column_index][card_index].get("id", -1)) == card_id:
 				return {"column": column_index, "index": card_index}
 	return {}
-
 
 ## 公开这个查询是为了提示与拖拽起点检查；它不会改变任何状态。
 func is_movable_sequence(column_index: int, start_index: int) -> bool:
@@ -212,7 +218,6 @@ func is_movable_sequence(column_index: int, start_index: int) -> bool:
 			return false
 	return true
 
-
 ## 为右键自动移动寻找一个确定的目标列，不修改牌局状态。
 ##
 ## 优先级符合常见蜘蛛纸牌操作：
@@ -220,7 +225,7 @@ func is_movable_sequence(column_index: int, start_index: int) -> bool:
 ## 2. 没有同花目标时，接到其他花色但点数大 1 的顶牌；
 ## 3. 完全没有点数目标时，才使用第一个空列。
 ##
-## 多张牌仍必须是 is_movable_sequence() 认可的同花色连续后缀。
+## 多张牌仍必须是 [method is_movable_sequence] 认可的同花色连续后缀。
 ## 返回 -1 表示没有合法目标。
 func find_auto_move_target(from_column: int, start_index: int) -> int:
 	if not is_movable_sequence(from_column, start_index):
@@ -243,8 +248,9 @@ func find_auto_move_target(from_column: int, start_index: int) -> int:
 		if other_suit_target < 0:
 			other_suit_target = target_column
 	return other_suit_target if other_suit_target >= 0 else empty_target
+#endregion
 
-
+#region 快照
 ## 快照只保存玩法数据，不包含撤销栈本身，避免历史呈指数增长。
 func capture_state() -> Dictionary:
 	return {
@@ -256,7 +262,6 @@ func capture_state() -> Dictionary:
 		"suit_count": suit_count,
 	}
 
-
 ## 测试、存档或调试工具可以恢复状态。返回 false 表示数据结构不合法。
 ## 正常恢复会清空旧撤销历史，因为旧历史属于另一条时间线。
 func restore_state(state: Dictionary) -> bool:
@@ -265,8 +270,9 @@ func restore_state(state: Dictionary) -> bool:
 	_apply_state(state)
 	_history.clear()
 	return true
+#endregion
 
-
+#region 移动内部实现
 func _move_error(from_column: int, start_index: int, to_column: int) -> String:
 	if from_column < 0 or from_column >= columns.size():
 		return "invalid_source"
@@ -285,12 +291,10 @@ func _move_error(from_column: int, start_index: int, to_column: int) -> String:
 		return "rank_mismatch"
 	return ""
 
-
 func _push_history() -> void:
 	_history.append(capture_state())
 	if _history.size() > MAX_UNDO_STEPS:
 		_history.pop_front()
-
 
 func _flip_exposed_card(column: Array, flipped_ids: Array[int]) -> void:
 	if column.is_empty():
@@ -300,7 +304,6 @@ func _flip_exposed_card(column: Array, flipped_ids: Array[int]) -> void:
 		return
 	top["face_up"] = true
 	flipped_ids.append(int(top.get("id", -1)))
-
 
 func _collect_completed_runs(column_index: int, flipped_ids: Array[int], removed_ids: Array[int]) -> void:
 	var column := columns[column_index]
@@ -316,7 +319,6 @@ func _collect_completed_runs(column_index: int, flipped_ids: Array[int], removed
 		score += 100
 		_flip_exposed_card(column, flipped_ids)
 
-
 func _has_complete_run(column: Array) -> bool:
 	if column.size() < CARDS_PER_RUN:
 		return false
@@ -331,8 +333,9 @@ func _has_complete_run(column: Array) -> bool:
 		if int(card.get("suit", -1)) != run_suit:
 			return false
 	return true
+#endregion
 
-
+#region 状态恢复与校验
 func _apply_state(state: Dictionary) -> void:
 	columns.clear()
 	for saved_column in state.get("columns", []):
@@ -342,7 +345,6 @@ func _apply_state(state: Dictionary) -> void:
 	move_count = int(state.get("move_count", 0))
 	score = int(state.get("score", INITIAL_SCORE))
 	suit_count = int(state.get("suit_count", 1))
-
 
 func _is_valid_state(state: Dictionary) -> bool:
 	if not state.has("suit_count") or typeof(state["suit_count"]) != TYPE_INT:
@@ -422,7 +424,6 @@ func _is_valid_state(state: Dictionary) -> bool:
 		inferred_completed_runs += missing_per_rank
 	return inferred_completed_runs == saved_completed
 
-
 func _is_valid_card(value: Variant, expected_suit_count: int) -> bool:
 	if not value is Dictionary:
 		return false
@@ -444,8 +445,9 @@ func _is_valid_card(value: Variant, expected_suit_count: int) -> bool:
 		and card.has("face_up")
 		and typeof(card["face_up"]) == TYPE_BOOL
 	)
+#endregion
 
-
+#region 内部工具
 func _shuffle(deck: Array[Dictionary]) -> void:
 	for index in range(deck.size() - 1, 0, -1):
 		var swap_index := _rng.randi_range(0, index)
@@ -453,14 +455,13 @@ func _shuffle(deck: Array[Dictionary]) -> void:
 		deck[index] = deck[swap_index]
 		deck[swap_index] = temporary
 
-
 func _result(
 	succeeded: bool,
 	reason: String,
 	moved_ids: Array[int] = [],
 	flipped_ids: Array[int] = [],
 	removed_ids: Array[int] = [],
-	completed_delta := 0
+	completed_delta: int = 0
 ) -> Dictionary:
 	return {
 		"success": succeeded,
@@ -470,3 +471,4 @@ func _result(
 		"removed_ids": removed_ids,
 		"completed_delta": completed_delta,
 	}
+#endregion

@@ -2,6 +2,8 @@ extends Node
 
 ## UFrame 的无第三方依赖回归测试。覆盖核心不变量、历史故障和主要可选模块。
 
+const POOL_LIFECYCLE_REENTRY_SCENE := preload("res://tests/pool_lifecycle_reentry_item.tscn")
+
 class LifecycleBehavior extends UFrameBehavior:
 	var enter_count := 0
 	var exit_count := 0
@@ -124,11 +126,112 @@ func _test_stats() -> void:
 	modifier.stat_name = "attack"
 	modifier.operation = UFrameStatModifier.Op.PERCENT
 	modifier.value = 0.5
-	stats.add_modifier(modifier)
+	_expect(stats.add_modifier(modifier), "stat accepts a new modifier instance")
 	_expect(is_equal_approx(stats.get_stat("attack"), 150.0), "stat modifier")
-	stats.remove_modifier(modifier)
+	_expect(not stats.add_modifier(modifier), "stat rejects the same modifier Resource instance twice")
+	_expect(stats.get_all_modifiers().size() == 1, "stat duplicate rejection keeps one modifier")
+	_expect(stats.remove_modifier(modifier), "stat removes an active modifier")
 	_expect(is_equal_approx(stats.get_stat("attack"), 100.0), "stat cache invalidation")
+	_expect(not stats.remove_modifier(modifier), "stat rejects duplicate modifier removal")
 	stats.free()
+
+	# 批量事务仍逐项通知修正生命周期，但每个受影响属性只重算和通知一次。
+	var batch_stats := UFrameStats.new()
+	batch_stats.base_stats = {"attack": 100.0, "speed": 10.0}
+	var attack_add := UFrameStatModifier.new()
+	attack_add.stat_name = "attack"
+	attack_add.operation = UFrameStatModifier.Op.ADD
+	attack_add.value = 5.0
+	attack_add.priority = 0
+	attack_add.source_name = "gear"
+	var attack_multiply := UFrameStatModifier.new()
+	attack_multiply.stat_name = "attack"
+	attack_multiply.operation = UFrameStatModifier.Op.MULTIPLY
+	attack_multiply.value = 2.0
+	attack_multiply.priority = 1
+	attack_multiply.source_name = "gear"
+	var speed_add := UFrameStatModifier.new()
+	speed_add.stat_name = "speed"
+	speed_add.operation = UFrameStatModifier.Op.ADD
+	speed_add.value = 3.0
+	speed_add.source_name = "aura"
+	var batch: Array[UFrameStatModifier] = [attack_add, attack_multiply, speed_add]
+	var added_count := [0]
+	var removed_count := [0]
+	var changed_stats: Array[String] = []
+	batch_stats.modifier_added.connect(func(_mod: UFrameStatModifier) -> void: added_count[0] += 1)
+	batch_stats.modifier_removed.connect(func(_mod: UFrameStatModifier) -> void: removed_count[0] += 1)
+	batch_stats.stat_changed.connect(func(stat_name: String, _new_value: float) -> void: changed_stats.append(stat_name))
+	_expect(batch_stats.add_modifiers(batch) == 3, "stats batch adds every unique modifier")
+	_expect(added_count[0] == 3 and changed_stats == ["attack", "speed"], "stats batch emits per modifier and once per affected stat")
+	_expect(is_equal_approx(batch_stats.get_stat("attack"), 210.0), "stats batch respects priority order")
+	_expect(is_equal_approx(batch_stats.get_stat("speed"), 13.0), "stats batch updates independent stats")
+	changed_stats.clear()
+	batch_stats.remove_by_source("gear")
+	_expect(removed_count[0] == 2 and changed_stats == ["attack"], "remove by source commits one change per affected stat")
+	_expect(is_equal_approx(batch_stats.get_stat("attack"), 100.0), "remove by source restores the affected stat")
+	changed_stats.clear()
+	var repeated_removal: Array[UFrameStatModifier] = [speed_add, speed_add]
+	_expect(batch_stats.remove_modifiers(repeated_removal) == 1, "stats batch removes the same requested instance once")
+	_expect(removed_count[0] == 3 and changed_stats == ["speed"], "stats batch removal keeps signal counts exact")
+	_expect(batch_stats.get_all_modifiers().is_empty(), "stats batch removal leaves no stale modifier")
+	batch_stats.free()
+
+	# 生命周期信号是同步通知；监听器若要继续修改同一 Stats，必须延迟到当前事务之后。
+	var reentrant_stats := UFrameStats.new()
+	reentrant_stats.base_stats = {"attack": 10.0}
+	var reentrant_a := UFrameStatModifier.new()
+	reentrant_a.stat_name = "attack"
+	reentrant_a.value = 1.0
+	var reentrant_b := UFrameStatModifier.new()
+	reentrant_b.stat_name = "attack"
+	reentrant_b.value = 2.0
+	var reentrant_batch: Array[UFrameStatModifier] = [reentrant_a, reentrant_b]
+	var lifecycle_reentrant_results: Array[int] = []
+	var stat_changed_reentrant_results: Array[int] = []
+	reentrant_stats.modifier_added.connect(func(_mod: UFrameStatModifier) -> void:
+		if lifecycle_reentrant_results.is_empty():
+			lifecycle_reentrant_results.append(reentrant_stats.remove_modifiers(reentrant_batch))
+	)
+	reentrant_stats.stat_changed.connect(func(_stat_name: String, _new_value: float) -> void:
+		if stat_changed_reentrant_results.is_empty():
+			stat_changed_reentrant_results.append(reentrant_stats.remove_modifiers(reentrant_batch))
+	)
+	_expect(reentrant_stats.add_modifiers(reentrant_batch) == 2, "stats completes the outer batch transaction")
+	_expect(
+		lifecycle_reentrant_results == [0]
+		and stat_changed_reentrant_results == [0]
+		and reentrant_stats.get_all_modifiers().size() == 2
+		and is_equal_approx(reentrant_stats.get_stat("attack"), 13.0),
+		"stats rejects synchronous modifier mutation from lifecycle and stat signals"
+	)
+	_expect(reentrant_stats.remove_modifiers(reentrant_batch) == 2, "stats accepts modifier mutation after notification completes")
+	reentrant_stats.free()
+
+	# 入树前加入的限时修正必须在 ready 后保持计时；同帧到期统一批量提交。
+	var timed_stats := UFrameStats.new()
+	timed_stats.base_stats = {"speed": 10.0}
+	var timed_modifiers: Array[UFrameStatModifier] = []
+	for index in 16:
+		var timed_modifier := UFrameStatModifier.new()
+		timed_modifier.stat_name = "speed"
+		timed_modifier.operation = UFrameStatModifier.Op.ADD
+		timed_modifier.value = 1.0
+		timed_modifier.priority = index
+		timed_modifier.duration = 0.1
+		timed_modifiers.append(timed_modifier)
+	_expect(timed_stats.add_modifiers(timed_modifiers) == 16, "stats accepts timed modifiers before entering the tree")
+	var expiry_removed_count := [0]
+	var expiry_changed_count := [0]
+	timed_stats.modifier_removed.connect(func(_mod: UFrameStatModifier) -> void: expiry_removed_count[0] += 1)
+	timed_stats.stat_changed.connect(func(_stat_name: String, _new_value: float) -> void: expiry_changed_count[0] += 1)
+	add_child(timed_stats)
+	_expect(timed_stats.is_processing(), "pre-ready timed modifiers keep Stats processing enabled")
+	timed_stats._process(0.1)
+	_expect(expiry_removed_count[0] == 16 and expiry_changed_count[0] == 1, "same-frame expiry removes every modifier in one stat transaction")
+	_expect(timed_stats.get_all_modifiers().is_empty() and is_equal_approx(timed_stats.get_stat("speed"), 10.0), "timed batch expiry restores the base stat")
+	_expect(not timed_stats.is_processing(), "Stats stops processing after the last timed modifier expires")
+	timed_stats.queue_free()
 
 func _test_inventory() -> void:
 	var inventory := UFrameInventory.new()
@@ -750,6 +853,61 @@ func _test_pool() -> void:
 	var packed := PackedScene.new()
 	_expect(packed.pack(template) == OK, "pack pool fixture")
 	template.free()
+
+	# acquire() 可以在 Pool 入树前使用；ready 只补足预热差值，不能重复创建或突破上限。
+	var pre_tree_pool := UFramePool.new()
+	pre_tree_pool.pool_scene = packed
+	pre_tree_pool.initial_size = 2
+	pre_tree_pool.maximum_size = 2
+	var pre_tree_active := pre_tree_pool.acquire()
+	_expect(pre_tree_active != null and pre_tree_pool.get_total_count() == 1, "pool can acquire before entering the tree")
+	add_child(pre_tree_pool)
+	await get_tree().process_frame
+	_expect(
+		pre_tree_pool.get_total_count() == 2 and pre_tree_pool.get_active_count() == 1,
+		"pool prewarm only fills the missing capacity after a pre-tree acquire"
+	)
+	pre_tree_pool.queue_free()
+	await get_tree().process_frame
+
+	# created 信号发出时新实例还在内部创建事务中；同步重入必须失败，延迟或后续获取仍可正常工作。
+	var creation_guard_pool := UFramePool.new()
+	creation_guard_pool.pool_scene = POOL_LIFECYCLE_REENTRY_SCENE
+	creation_guard_pool.initial_size = 1
+	creation_guard_pool.maximum_size = 1
+	var creation_reentrant_results: Array[Node] = []
+	creation_guard_pool.instance_created.connect(func(_instance: Node) -> void:
+		creation_reentrant_results.append(creation_guard_pool.acquire())
+	)
+	add_child(creation_guard_pool)
+	await get_tree().process_frame
+	_expect(
+		creation_reentrant_results.size() == 1
+		and creation_reentrant_results[0] == null
+		and creation_guard_pool.get_total_count() == 1
+		and creation_guard_pool.get_active_count() == 0,
+		"pool rejects acquire reentry while a new instance is being classified"
+	)
+	var guarded_item := creation_guard_pool.acquire()
+	_expect(
+		guarded_item != null
+		and int(guarded_item.get("ready_attempt_count")) == 1
+		and guarded_item.get("ready_acquire_result") == null
+		and int(guarded_item.get("acquire_hook_count")) == 1
+		and guarded_item.get("acquire_hook_result") == null
+		and creation_guard_pool.get_active_count() == 1,
+		"pool rejects acquire reentry from child ready and acquire hooks"
+	)
+	_expect(creation_guard_pool.release(guarded_item), "pool releases the lifecycle reentry fixture normally")
+	_expect(
+		int(guarded_item.get("release_hook_count")) == 1
+		and guarded_item.get("release_hook_result") == null
+		and creation_guard_pool.get_active_count() == 0,
+		"pool rejects acquire reentry from the release hook"
+	)
+	creation_guard_pool.queue_free()
+	await get_tree().process_frame
+
 	var pool := UFramePool.new()
 	pool.pool_scene = packed
 	pool.initial_size = 3
@@ -778,10 +936,38 @@ func _test_pool() -> void:
 	)
 	_expect(not pool.release(first), "pool rejects duplicate release")
 	first.queue_free()
-	await get_tree().process_frame
 	var replacement := pool.acquire()
-	_expect(is_instance_valid(replacement), "pool prunes externally freed instances")
+	_expect(is_instance_valid(replacement) and replacement != first, "pool lazily skips a queued available instance")
+	await get_tree().process_frame
 	pool.queue_free()
+	await get_tree().process_frame
+
+	# 最早活跃实例在真正退出树前已经 queued；Pool 应惰性跳过并补建，而不是错误释放新实例。
+	var invalid_active_pool := UFramePool.new()
+	invalid_active_pool.pool_scene = packed
+	invalid_active_pool.initial_size = 2
+	invalid_active_pool.maximum_size = 2
+	var invalid_active_releases := [0]
+	invalid_active_pool.instance_released.connect(func(_instance: Node) -> void: invalid_active_releases[0] += 1)
+	add_child(invalid_active_pool)
+	await get_tree().process_frame
+	var queued_oldest := invalid_active_pool.acquire()
+	var active_survivor := invalid_active_pool.acquire()
+	queued_oldest.queue_free()
+	var active_replacement := invalid_active_pool.acquire()
+	_expect(
+		is_instance_valid(active_replacement)
+		and active_replacement != queued_oldest
+		and active_replacement != active_survivor,
+		"pool replaces a queued oldest lifecycle without disturbing the next active instance"
+	)
+	_expect(
+		invalid_active_releases[0] == 0
+		and invalid_active_pool.get_total_count() == 2
+		and invalid_active_pool.get_active_count() == 2,
+		"pool does not emit release for a newly created replacement"
+	)
+	invalid_active_pool.queue_free()
 	await get_tree().process_frame
 
 	# 最早实例按最近一次 acquire 的顺序计算；被回收后会重新插入有序活跃集合末尾，
@@ -978,9 +1164,9 @@ func _test_platform_and_loot_scene_composition() -> void:
 	var platform_player := player_scene.instantiate()
 	var machine := platform_player.get_node_or_null("StateMachine") as UFrameStateMachine
 	_expect(machine != null and machine.get_parent() == platform_player, "platform state machine is a direct player component")
-	_expect(machine.get_node_or_null("Idle") is Platformer_Base_State, "platform authors Idle state from the shared player state base")
-	_expect(machine.get_node_or_null("Run") is Platformer_Base_State, "platform authors Run state from the shared player state base")
-	_expect(machine.get_node_or_null("Air") is Platformer_Base_State, "platform authors Air state from the shared player state base")
+	_expect(machine.get_node_or_null("Idle") is PlatformerBaseState, "platform authors Idle state from the shared player state base")
+	_expect(machine.get_node_or_null("Run") is PlatformerBaseState, "platform authors Run state from the shared player state base")
+	_expect(machine.get_node_or_null("Air") is PlatformerBaseState, "platform authors Air state from the shared player state base")
 	_expect(platform_player.has_node("CollisionShape2D") and platform_player.has_node("VisualRoot"), "platform authors collision and visuals in player scene")
 	platform_player.free()
 

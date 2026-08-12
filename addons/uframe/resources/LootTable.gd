@@ -2,9 +2,11 @@ extends Resource
 
 ## 无状态加权掉落表
 ##
-## 不保存连续未掉落次数，同一个 [code].tres[/code] 可以被多个调用者安全共享[br]
-## 调用者把上次结果中的 [code]miss_count[/code] 传给下一次抽取，以分别维护保底状态[br][br]
-## [code]示例：[/code]
+## 在 Inspector 中组合 [UFrameLootEntry]，负责加权抽取、空掉落和保底规则。
+## 本 Resource 不保存连续未掉落次数，因此同一个 [code].tres[/code] 可以被多个调用者安全共享。
+## 调用者把上次结果中的 [code]miss_count[/code] 传给下一次抽取，分别维护各自的保底状态。
+##
+## 使用示例：
 ## [codeblock]
 ## var result := table.roll(miss_count)
 ## miss_count = result["miss_count"]
@@ -13,30 +15,25 @@ extends Resource
 ## [/codeblock]
 class_name UFrameLootTable
 
-#region 配置
-## [b]掉落条目[/b]
+#region Inspector 配置
+## 参与抽取的掉落条目。
 @export var entries: Array[UFrameLootEntry] = []
 
-## [b]无掉落权重[/b][br]
-## [code]0[/code] 表示每次都尝试选择有效条目
+## 无掉落权重；[code]0[/code] 表示每次都尝试选择有效条目。
 @export_range(0.0, 1000000.0) var no_drop_weight := 0.0
 
-## [b]保底次数[/b][br]
-## 连续未掉落达到该次数后触发；[code]0[/code] 表示关闭保底
+## 连续未掉落达到该次数后触发保底；[code]0[/code] 表示关闭保底。
 @export_range(0, 1000000) var pity_count := 0
 
-## [b]保底条目下标[/b][br]
-## 下标或对应条目无效时不会触发保底
+## 保底条目下标；下标或对应条目无效时不会触发保底。
 @export var pity_entry_index := -1
 #endregion
 
 #region 主要方法
-## [b]抽取一次掉落[/b][br]
-## 返回值固定包含 [code]content_id[/code]、[code]count[/code]、[code]miss_count[/code] 和 [code]pity_triggered[/code][br]
-## 传入随机数生成器后可获得可复现结果[br][br]
-## [param miss_count] : 调用者此前连续未掉落的次数[br]
-## [param rng] : 可选的随机数生成器
-func roll(miss_count := 0, rng: RandomNumberGenerator = null) -> Dictionary:
+## 抽取一次掉落。
+## 返回值固定包含 [code]content_id[/code]、[code]count[/code]、[code]miss_count[/code] 和
+## [code]pity_triggered[/code]；传入 [param rng] 后可获得可复现结果。
+func roll(miss_count: int = 0, rng: RandomNumberGenerator = null) -> Dictionary:
 	miss_count = maxi(miss_count, 0)
 	if _should_trigger_pity(miss_count):
 		var pity_result := _make_result(entries[pity_entry_index], rng)
@@ -50,12 +47,9 @@ func roll(miss_count := 0, rng: RandomNumberGenerator = null) -> Dictionary:
 	result["pity_triggered"] = false
 	return result
 
-## [b]连续抽取并合并结果[/b][br]
-## 返回 [code]drops[/code] 数组和下一次应继续使用的 [code]miss_count[/code][br][br]
-## [param times] : 抽取次数[br]
-## [param miss_count] : 调用者此前连续未掉落的次数[br]
-## [param rng] : 可选的随机数生成器
-func roll_multi(times: int, miss_count := 0, rng: RandomNumberGenerator = null) -> Dictionary:
+## 连续抽取并按内容 ID 合并结果。
+## 返回 [code]drops[/code] 数组和下一次应继续使用的 [code]miss_count[/code]。
+func roll_multi(times: int, miss_count: int = 0, rng: RandomNumberGenerator = null) -> Dictionary:
 	var totals: Dictionary[StringName, int] = {}
 	var current_misses := maxi(miss_count, 0)
 	for _index in maxi(times, 0):
@@ -70,8 +64,7 @@ func roll_multi(times: int, miss_count := 0, rng: RandomNumberGenerator = null) 
 #endregion
 
 #region 查询方法
-## [b]获取全部有效内容 ID[/b][br]
-## 返回不重复的 ID 数组，可用于进入关卡前预加载资源
+## 返回全部有效且不重复的内容 ID，可用于进入关卡前预加载资源。
 func get_all_content_ids() -> Array[StringName]:
 	var unique: Dictionary[StringName, bool] = {}
 	for entry in entries:
@@ -81,8 +74,7 @@ func get_all_content_ids() -> Array[StringName]:
 #endregion
 
 #region 内部方法
-## [b]执行一次加权抽取[/b][br][br]
-## [param rng] : 可选的随机数生成器
+## 执行一次包含空掉落权重的加权抽取。
 func _roll_weighted(rng: RandomNumberGenerator) -> Dictionary:
 	var total_weight := maxf(no_drop_weight, 0.0)
 	for entry in entries:
@@ -102,8 +94,7 @@ func _roll_weighted(rng: RandomNumberGenerator) -> Dictionary:
 			return _make_result(entry, rng)
 	return _empty_result()
 
-## [b]判断是否触发保底[/b][br][br]
-## [param miss_count] : 调用者此前连续未掉落的次数
+## 判断当前连续未掉落次数是否满足有效保底配置。
 func _should_trigger_pity(miss_count: int) -> bool:
 	return pity_count > 0 \
 		and miss_count >= pity_count \
@@ -111,24 +102,21 @@ func _should_trigger_pity(miss_count: int) -> bool:
 		and pity_entry_index < entries.size() \
 		and _is_eligible(entries[pity_entry_index])
 
-## [b]判断条目是否有效[/b][br][br]
-## [param entry] : 需要检查的掉落条目
+## 判断条目是否具有可抽取的 ID、权重和数量。
 func _is_eligible(entry: UFrameLootEntry) -> bool:
 	return entry != null \
 		and not entry.content_id.is_empty() \
 		and entry.weight > 0.0 \
 		and maxi(entry.min_count, entry.max_count) > 0
 
-## [b]生成掉落结果[/b][br][br]
-## [param entry] : 选中的掉落条目[br]
-## [param rng] : 可选的随机数生成器
+## 根据选中条目的数量范围生成掉落结果。
 func _make_result(entry: UFrameLootEntry, rng: RandomNumberGenerator) -> Dictionary:
 	var minimum := maxi(entry.min_count, 0)
 	var maximum := maxi(entry.max_count, minimum)
 	var count := rng.randi_range(minimum, maximum) if rng else randi_range(minimum, maximum)
 	return _empty_result() if count <= 0 else {"content_id": entry.content_id, "count": count}
 
-## [b]生成空结果[/b]
+## 生成不包含掉落的基础结果。
 func _empty_result() -> Dictionary:
 	return {"content_id": StringName(), "count": 0}
 #endregion

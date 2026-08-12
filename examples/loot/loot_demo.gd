@@ -3,9 +3,10 @@ extends Control
 ## 掉落与背包示例的薄控制器。
 ##
 ## 打开 loot_demo.tscn 可以直接看到 Player/InventoryComponent、完整 UI 和
-## SlotGrid 挂载点；掉落表与物品资料则来自 Inspector 引用的 .tres。[br]
-## 只有数量取决于 InventoryComponent.slot_count 的重复格子会在运行时生成。
+## SlotGrid 挂载点；掉落表与物品资料则来自 Inspector 引用的 .tres。
+## 唯一动态生成的正式 UI 是数量取决于 InventoryComponent.slot_count 的重复格子。
 
+#region 配置
 const UI := preload("res://examples/common/example_ui.gd")
 const SAVE_SLOT := "uframe_loot_demo"
 const MENU_SCENE := "res://examples/example_browser.tscn"
@@ -16,23 +17,41 @@ const MENU_SCENE := "res://examples/example_browser.tscn"
 @export var item_definitions: Array[LootDemoItemData] = []
 ## 单个格子的可复用场景模板；实际数量由 InventoryComponent.slot_count 决定。
 @export var slot_scene: PackedScene
+#endregion
 
-## 通过唯一节点名取得场景中已经存在的组件和 UI，不在脚本中重新搭建界面。
+#region 场景引用
+## 场景中静态挂载的唯一背包组件。
 @onready var inventory: UFrameInventory = %InventoryComponent
+## 运行时重复格子的固定布局挂点。
 @onready var slot_grid: GridContainer = %SlotGrid
+## 最近一次掉落或背包操作结果。
 @onready var result_label: Label = %ResultLabel
+## 背包容量和总数量摘要。
 @onready var inventory_summary: Label = %InventorySummary
+## 跟随鼠标显示当前拿起堆叠的标签。
 @onready var cursor_label: Label = %CursorLabel
+## 当前保底进度文本。
 @onready var pity_label: Label = %PityLabel
+## 当前保底进度条。
 @onready var pity_bar: ProgressBar = %PityBar
+## 鼠标悬停格子的物品详情。
 @onready var item_detail: Label = %ItemDetail
+#endregion
 
+#region 运行时状态
+## 当前示例已经抽取的次数。
 var roll_count := 0
+## 连续未命中保底物品的次数；由调用方持有，不写回共享掉落表。
 var pity_misses := 0
+## 与背包格子索引一一对应的重复 View。
 var slot_buttons: Array[InventorySlotButton] = []
+## 鼠标当前携带的临时堆叠；空 Dictionary 表示没有拿起物品。
 var cursor_stack: Dictionary = {}
+## 防止连续提交多次返回菜单请求。
 var _changing_scene := false
+#endregion
 
+#region 生命周期
 func _ready() -> void:
 	_style_static_interface()
 	if not _has_valid_configuration():
@@ -48,7 +67,9 @@ func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed(&"ui_cancel"):
 		_return_to_menu()
 	cursor_label.global_position = get_viewport().get_mouse_position() + Vector2(14, 14)
+#endregion
 
+#region 场景装配
 ## 检查场景中必须由开发者配置的资源，缺失时给出容易理解的错误。
 func _has_valid_configuration() -> bool:
 	if loot_table == null:
@@ -106,7 +127,10 @@ func _style_static_interface() -> void:
 	UI.style_chip(%EquipmentChip, Color("#c8d5e2"))
 	UI.style_progress_bar(pity_bar, Color("#c083ff"))
 	cursor_label.add_theme_stylebox_override("normal", UI.panel_style(UI.SURFACE_RAISED, Color("#66d9a0"), 8, 9))
+#endregion
 
+#region 掉落与显示
+## 恢复教学用的零散堆叠，让玩家进入场景后可以立即体验拖拽与整理。
 func _seed_inventory() -> void:
 	cursor_stack = {}
 	roll_count = 0
@@ -188,7 +212,9 @@ func _show_slot_detail(index: int) -> void:
 		inventory.get_stack_limit(entry.item_id),
 		data.description,
 	]
+#endregion
 
+#region 背包交互
 func _on_slot_right_clicked(index: int, half: bool) -> void:
 	if cursor_stack.is_empty():
 		var slot := inventory.get_slot(index)
@@ -233,7 +259,9 @@ func _return_cursor_to_inventory() -> bool:
 	result_label.text = "背包已满，无法自动放回鼠标物品；请先腾出空间。"
 	_update_cursor_label()
 	return false
+#endregion
 
+#region 存档
 func _save_game() -> void:
 	if not _return_cursor_to_inventory():
 		return
@@ -258,7 +286,9 @@ func _load_game() -> void:
 	pity_misses = data.pity_misses
 	result_label.text = "读取成功，共进行过 %d 次抽取。" % roll_count
 	_refresh_summary()
+#endregion
 
+#region 背包命令
 func _clear_inventory() -> void:
 	cursor_stack = {}
 	inventory.clear()
@@ -272,14 +302,18 @@ func _sort_inventory() -> void:
 		result_label.text = "已按材料 → 消耗品 → 装备排列，并自动合并同类堆叠。"
 	else:
 		result_label.text = "当前堆叠规则容量不足，整理已安全取消，物品没有变化。"
+#endregion
 
+#region 查询
 func _item_sort_key(item_id: StringName) -> String:
 	var data := _get_item_data(item_id)
 	return "%02d:%s" % [data.category_order, String(item_id)]
 
 func _get_item_data(item_id: StringName) -> LootDemoItemData:
 	return UFrame.registry.get_value(&"demo_item", item_id) as LootDemoItemData
+#endregion
 
+#region 场景切换
 func _return_to_menu() -> void:
 	if _changing_scene or not _return_cursor_to_inventory():
 		return
@@ -287,3 +321,4 @@ func _return_to_menu() -> void:
 	if UFrame.transitions and await UFrame.transitions.change_scene(MENU_SCENE, 0.14):
 		return
 	get_tree().change_scene_to_file(MENU_SCENE)
+#endregion

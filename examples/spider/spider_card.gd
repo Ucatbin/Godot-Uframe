@@ -1,17 +1,14 @@
-class_name SpiderCardView
 extends Control
 
 ## 蜘蛛纸牌的轻量卡牌 View。
 ##
-## 这是一个只有根 Control 的程序化绘制场景：没有图片资源，也没有常驻 _process()。
-## 规则模型只需调用 configure() 同步牌面数据；合法移动、收组等规则不放在 View 中。
+## 打开 spider_card.tscn 可以看到只有根 Control 的程序化绘制场景；它没有图片资源，
+## 也没有常驻 [method Node._process]。规则模型只需调用 [method configure] 同步牌面数据；
+## 合法移动、收组等规则不放在 View 中。
 ## 悬停、翻牌、闪光和庆祝均由短时 Tween 驱动，动画结束后不会继续产生逐帧开销。
+class_name SpiderCardView
 
-## 按下卡牌时发出。Board 可以由 card.card_id 找到规则模型中的同一张牌。
-signal pressed(card: SpiderCardView)
-## 右键牌面时发出。Board 会为这张牌及其上方合法牌组寻找最佳目标列。
-signal auto_move_requested(card: SpiderCardView)
-
+#region 视觉常量
 const CARD_SIZE := Vector2(76.0, 106.0)
 const CARD_MARGIN := 2.0
 const CORNER_RADIUS := 9.0
@@ -29,16 +26,16 @@ const BACK_GREEN_LIGHT := Color("#1c5948")
 const WEB_COLOR := Color("#a9c9ac")
 const GOLD := Color("#f2c66d")
 const FOCUS_BLUE := Color("#72b8e8")
+#endregion
 
-## 规则模型中的唯一牌 ID。-1 表示尚未配置。
-var card_id := -1
-## 1=A、11=J、12=Q、13=K。
-var rank := 1
-## 0/1/2/3 分别显示为 ♠/♥/♣/♦。规则仍由 SpiderGameModel 判断。
-var suit := 0
-## true 绘制暖象牙牌面，false 绘制墨绿蛛网牌背。
-var face_up := false
+#region 信号
+## 按下卡牌时发出。SpiderDemo 控制器可以由 [member card_id] 找到模型中的同一张牌。
+signal pressed(card: SpiderCardView)
+## 右键牌面时发出。SpiderDemo 控制器会为合法牌组寻找最佳目标列。
+signal auto_move_requested(card: SpiderCardView)
+#endregion
 
+#region Inspector 配置
 ## false 时忽略鼠标和键盘输入，但仍正常绘制。
 @export var interactive := true:
 	set(value):
@@ -48,6 +45,17 @@ var face_up := false
 			return
 		interactive = value
 		_sync_interaction()
+#endregion
+
+#region 牌面状态
+## 规则模型中的唯一牌 ID。-1 表示尚未配置。
+var card_id := -1
+## 1=A、11=J、12=Q、13=K。
+var rank := 1
+## 0/1/2/3 分别显示为 ♠/♥/♣/♦。规则仍由 SpiderGameModel 判断。
+var suit := 0
+## true 绘制暖象牙牌面，false 绘制墨绿蛛网牌背。
+var face_up := false
 
 var _hovered := false
 var _dragging := false
@@ -84,8 +92,9 @@ var _move_tween: Tween
 var _flip_tween: Tween
 var _flash_tween: Tween
 var _celebration_tween: Tween
+#endregion
 
-
+#region 生命周期
 func _ready() -> void:
 	_font = ThemeDB.fallback_font
 	pivot_offset = size * 0.5
@@ -95,11 +104,12 @@ func _ready() -> void:
 	_sync_interaction()
 	_update_tooltip()
 	queue_redraw()
+#endregion
 
-
+#region 公开显示接口
 ## 用规则模型中的数据刷新这张牌。第四个参数有默认值，旧的单色调用仍然兼容。
 ## 配置只同步显示数据，不会自行判断规则或播放翻牌动画。
-func configure(new_card_id: int, new_rank: int, new_face_up: bool, new_suit := 0) -> void:
+func configure(new_card_id: int, new_rank: int, new_face_up: bool, new_suit: int = 0) -> void:
 	card_id = new_card_id
 	rank = clampi(new_rank, 1, 13)
 	suit = clampi(new_suit, 0, 3)
@@ -107,8 +117,7 @@ func configure(new_card_id: int, new_rank: int, new_face_up: bool, new_suit := 0
 	_update_tooltip()
 	queue_redraw()
 
-
-## Board 根据相邻卡牌间距写入露出高度；相同值不会触发重绘。
+## SpiderDemo 根据相邻卡牌间距写入露出高度；相同值不会触发重绘。
 func set_exposed_height(value: float) -> void:
 	var resolved := clampf(value, 8.0, CARD_SIZE.y)
 	if is_equal_approx(_exposed_height, resolved):
@@ -116,9 +125,8 @@ func set_exposed_height(value: float) -> void:
 	_exposed_height = resolved
 	queue_redraw()
 
-
 ## 设置正反面。animated=false 适合初始化或撤销后的整盘快速刷新。
-func set_face_up(value: bool, animated := true, duration := 0.18) -> void:
+func set_face_up(value: bool, animated: bool = true, duration: float = 0.18) -> void:
 	if value == face_up:
 		return
 	_kill_tween(_flip_tween)
@@ -141,8 +149,7 @@ func set_face_up(value: bool, animated := true, duration := 0.18) -> void:
 	_flip_tween.set_ease(Tween.EASE_OUT)
 	_flip_tween.tween_property(self, "scale:x", full_scale_x, half_duration)
 
-
-## Board 在拖动一张或一组牌时调用。这里只改变表现，不自行修改位置或游戏规则。
+## SpiderDemo 在拖动一张或一组牌时调用。这里只改变表现，不自行修改位置或规则。
 func set_dragging(value: bool) -> void:
 	if _dragging == value:
 		return
@@ -151,17 +158,16 @@ func set_dragging(value: bool) -> void:
 	_animate_hover()
 	queue_redraw()
 
-
+## 返回当前 Card View 是否正由控制器拖拽。
 func is_dragging() -> bool:
 	return _dragging
 
-
+## 返回鼠标是否正悬停在当前 Card View 上。
 func is_hovered() -> bool:
 	return _hovered
 
-
-## 平滑移动到父节点坐标中的目标位置。duration=0 时立即就位。
-func move_to(target_position: Vector2, duration := 0.18, delay := 0.0) -> Tween:
+## 平滑移动到父节点坐标中的目标位置；[param duration] 为 0 时立即就位。
+func move_to(target_position: Vector2, duration: float = 0.18, delay: float = 0.0) -> Tween:
 	_kill_tween(_move_tween)
 	# 同步 HUD 或无关列时，位置通常没有变化；跳过 Tween 可避免一次动作创建几十个空动画。
 	if delay <= 0.0 and position.distance_squared_to(target_position) <= 0.01:
@@ -177,9 +183,8 @@ func move_to(target_position: Vector2, duration := 0.18, delay := 0.0) -> Tween:
 	_move_tween.tween_property(self, "position", target_position, duration)
 	return _move_tween
 
-
 ## 播放一次短闪光，例如合法落牌或提示可移动牌组。
-func flash(color := GOLD, duration := 0.36) -> void:
+func flash(color: Color = GOLD, duration: float = 0.36) -> void:
 	_flash_color = color
 	_flash_alpha = 1.0
 	_pulse_amount = 1.0
@@ -193,9 +198,8 @@ func flash(color := GOLD, duration := 0.36) -> void:
 	_flash_tween.tween_property(self, "_flash_alpha", 0.0, maxf(duration, 0.01))
 	_flash_tween.tween_property(self, "_pulse_amount", 0.0, maxf(duration * 0.75, 0.01))
 
-
-## 收齐 K 到 A 时播放庆祝光芒。delay 可用于让 13 张牌依次亮起。
-func celebrate(delay := 0.0) -> void:
+## 收齐 K 到 A 时播放庆祝光芒；[param delay] 可让 13 张牌依次亮起。
+func celebrate(delay: float = 0.0) -> void:
 	_kill_tween(_celebration_tween)
 	_celebration_amount = 0.0
 	if not is_inside_tree():
@@ -208,8 +212,9 @@ func celebrate(delay := 0.0) -> void:
 	_celebration_tween.tween_property(self, "_celebration_amount", 1.0, 0.16)
 	_celebration_tween.set_trans(Tween.TRANS_QUAD)
 	_celebration_tween.tween_property(self, "_celebration_amount", 0.0, 0.52)
+#endregion
 
-
+#region 输入
 func _gui_input(event: InputEvent) -> void:
 	if not interactive:
 		return
@@ -228,8 +233,100 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	# 本示例用“按住并拖动”表达移动，键盘按键继续向场景控制器传播。
 	# 因此卡牌获得焦点后，Space 仍然可以执行全局发牌，不会误进入无释放事件的拖拽。
+#endregion
 
+#region 牌面查询
+func _rank_text() -> String:
+	match rank:
+		1: return "A"
+		11: return "J"
+		12: return "Q"
+		13: return "K"
+		_: return str(rank)
 
+func _suit_glyph() -> String:
+	match suit:
+		1: return "♥"
+		2: return "♣"
+		3: return "♦"
+		_: return "♠"
+
+func _suit_name() -> String:
+	match suit:
+		1: return "红心"
+		2: return "梅花"
+		3: return "方块"
+		_: return "黑桃"
+
+func _suit_color() -> Color:
+	match suit:
+		1: return HEART_RED
+		2: return CLUB_PURPLE
+		3: return DIAMOND_ORANGE
+		_: return FACE_GREEN
+#endregion
+
+#region 内部动画与交互
+func _apply_face_up(value: bool) -> void:
+	face_up = value
+	_update_tooltip()
+	queue_redraw()
+
+func _begin_celebration() -> void:
+	flash(GOLD, 0.46)
+
+func _on_mouse_entered() -> void:
+	if not interactive:
+		return
+	_hovered = true
+	_animate_hover()
+
+func _on_mouse_exited() -> void:
+	_hovered = false
+	_animate_hover()
+
+func _animate_hover() -> void:
+	var target := 1.0 if (_hovered or _dragging) and interactive else 0.0
+	_kill_tween(_hover_tween)
+	# 停掉可能朝旧目标运动的 Tween 后，零变化不再创建新 Tween。
+	if is_equal_approx(_hover_amount, target):
+		return
+	if not is_inside_tree():
+		_hover_amount = target
+		return
+	_hover_tween = create_tween()
+	_hover_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_hover_tween.tween_property(self, "_hover_amount", target, 0.11)
+
+func _on_resized() -> void:
+	pivot_offset = size * 0.5
+	queue_redraw()
+
+func _sync_interaction() -> void:
+	if not is_node_ready():
+		return
+	mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
+	focus_mode = Control.FOCUS_CLICK if interactive else Control.FOCUS_NONE
+	mouse_default_cursor_shape = Control.CURSOR_DRAG if _dragging else Control.CURSOR_POINTING_HAND
+	if not interactive:
+		_hovered = false
+		_dragging = false
+		_animate_hover()
+
+func _update_tooltip() -> void:
+	if card_id < 0:
+		tooltip_text = "未配置的卡牌"
+	elif face_up:
+		tooltip_text = "%s%s · %s · 卡牌 %d · 右键自动移动" % [_rank_text(), _suit_glyph(), _suit_name(), card_id]
+	else:
+		tooltip_text = "背面卡牌"
+
+func _kill_tween(tween: Tween) -> void:
+	if tween and tween.is_valid():
+		tween.kill()
+#endregion
+
+#region 程序化绘制
 func _draw() -> void:
 	var draw_size := size
 	if draw_size.x <= 0.0 or draw_size.y <= 0.0:
@@ -266,7 +363,6 @@ func _draw() -> void:
 	if _celebration_amount > 0.0:
 		_draw_celebration(center + Vector2(0.0, -lift), draw_size)
 
-
 ## 被覆盖的卡牌只需要顶部轮廓和角标。尤其牌背不再绘制 3 个 32 段圆环，
 ## 长牌列的常驻 Canvas 命令量会显著降低。
 func _draw_compact_card(card_rect: Rect2) -> void:
@@ -283,7 +379,6 @@ func _draw_compact_card(card_rect: Rect2) -> void:
 		var y := inner.position.y + inner.size.y * 0.5
 		draw_line(Vector2(inner.position.x + 5.0, y), Vector2(inner.end.x - 5.0, y), Color(WEB_COLOR, 0.52), 1.0)
 		_draw_rounded_outline(inner.grow(-1.0), Color(WEB_COLOR, 0.38), minf(CORNER_RADIUS - 3.0, inner.size.y * 0.38), 1.0)
-
 
 func _draw_face(card_rect: Rect2) -> void:
 	_draw_rounded_rect(card_rect, IVORY_DARK, CORNER_RADIUS)
@@ -320,7 +415,6 @@ func _draw_face(card_rect: Rect2) -> void:
 	)
 	_draw_spider(card_rect.get_center() + Vector2(0.0, 25.0), Color(suit_color, 0.24), 0.48)
 
-
 func _draw_back(card_rect: Rect2) -> void:
 	_draw_rounded_rect(card_rect, IVORY_DARK, CORNER_RADIUS)
 	var inner := card_rect.grow(-2.0)
@@ -338,7 +432,6 @@ func _draw_back(card_rect: Rect2) -> void:
 		draw_arc(web_center, radius * ring, 0.0, TAU, 32, Color(WEB_COLOR, 0.58), 1.0, true)
 	_draw_spider(web_center, IVORY_LIGHT, 0.48)
 
-
 func _draw_spider(center: Vector2, color: Color, scale_factor: float) -> void:
 	var body_radius := 5.2 * scale_factor
 	var head_radius := 3.2 * scale_factor
@@ -351,7 +444,6 @@ func _draw_spider(center: Vector2, color: Color, scale_factor: float) -> void:
 			draw_polyline(PackedVector2Array([hip, knee, foot]), color, maxf(1.0, 1.4 * scale_factor), true)
 	draw_circle(center + Vector2(0.0, 3.0 * scale_factor), body_radius, color)
 	draw_circle(center - Vector2(0.0, 4.6 * scale_factor), head_radius, color)
-
 
 func _draw_celebration(center: Vector2, draw_size: Vector2) -> void:
 	var strength := sin(_celebration_amount * PI)
@@ -366,7 +458,6 @@ func _draw_celebration(center: Vector2, draw_size: Vector2) -> void:
 		draw_line(origin - direction * length, origin + direction * length, color, 1.8, true)
 		draw_circle(origin, 1.4 + strength, color)
 
-
 func _draw_rounded_rect(rect: Rect2, color: Color, radius: float) -> void:
 	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		return
@@ -377,7 +468,6 @@ func _draw_rounded_rect(rect: Rect2, color: Color, radius: float) -> void:
 	draw_circle(Vector2(rect.end.x - resolved_radius, rect.position.y + resolved_radius), resolved_radius, color)
 	draw_circle(Vector2(rect.position.x + resolved_radius, rect.end.y - resolved_radius), resolved_radius, color)
 	draw_circle(rect.end - Vector2(resolved_radius, resolved_radius), resolved_radius, color)
-
 
 func _draw_rounded_outline(rect: Rect2, color: Color, radius: float, width: float) -> void:
 	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
@@ -395,103 +485,4 @@ func _draw_rounded_outline(rect: Rect2, color: Color, radius: float, width: floa
 	draw_arc(Vector2(right - resolved_radius, top + resolved_radius), resolved_radius, PI * 1.5, TAU, 8, color, width, true)
 	draw_arc(Vector2(right - resolved_radius, bottom - resolved_radius), resolved_radius, 0.0, PI * 0.5, 8, color, width, true)
 	draw_arc(Vector2(left + resolved_radius, bottom - resolved_radius), resolved_radius, PI * 0.5, PI, 8, color, width, true)
-
-
-func _rank_text() -> String:
-	match rank:
-		1: return "A"
-		11: return "J"
-		12: return "Q"
-		13: return "K"
-		_: return str(rank)
-
-
-func _suit_glyph() -> String:
-	match suit:
-		1: return "♥"
-		2: return "♣"
-		3: return "♦"
-		_: return "♠"
-
-
-func _suit_name() -> String:
-	match suit:
-		1: return "红心"
-		2: return "梅花"
-		3: return "方块"
-		_: return "黑桃"
-
-
-func _suit_color() -> Color:
-	match suit:
-		1: return HEART_RED
-		2: return CLUB_PURPLE
-		3: return DIAMOND_ORANGE
-		_: return FACE_GREEN
-
-
-func _apply_face_up(value: bool) -> void:
-	face_up = value
-	_update_tooltip()
-	queue_redraw()
-
-
-func _begin_celebration() -> void:
-	flash(GOLD, 0.46)
-
-
-func _on_mouse_entered() -> void:
-	if not interactive:
-		return
-	_hovered = true
-	_animate_hover()
-
-
-func _on_mouse_exited() -> void:
-	_hovered = false
-	_animate_hover()
-
-
-func _animate_hover() -> void:
-	var target := 1.0 if (_hovered or _dragging) and interactive else 0.0
-	_kill_tween(_hover_tween)
-	# 停掉可能朝旧目标运动的 Tween 后，零变化不再创建新 Tween。
-	if is_equal_approx(_hover_amount, target):
-		return
-	if not is_inside_tree():
-		_hover_amount = target
-		return
-	_hover_tween = create_tween()
-	_hover_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_hover_tween.tween_property(self, "_hover_amount", target, 0.11)
-
-
-func _on_resized() -> void:
-	pivot_offset = size * 0.5
-	queue_redraw()
-
-
-func _sync_interaction() -> void:
-	if not is_node_ready():
-		return
-	mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
-	focus_mode = Control.FOCUS_CLICK if interactive else Control.FOCUS_NONE
-	mouse_default_cursor_shape = Control.CURSOR_DRAG if _dragging else Control.CURSOR_POINTING_HAND
-	if not interactive:
-		_hovered = false
-		_dragging = false
-		_animate_hover()
-
-
-func _update_tooltip() -> void:
-	if card_id < 0:
-		tooltip_text = "未配置的卡牌"
-	elif face_up:
-		tooltip_text = "%s%s · %s · 卡牌 %d · 右键自动移动" % [_rank_text(), _suit_glyph(), _suit_name(), card_id]
-	else:
-		tooltip_text = "背面卡牌"
-
-
-func _kill_tween(tween: Tween) -> void:
-	if tween and tween.is_valid():
-		tween.kill()
+#endregion

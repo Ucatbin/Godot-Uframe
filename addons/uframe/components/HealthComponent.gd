@@ -1,58 +1,54 @@
 extends Node
 
-## 可复用实体生命组件
+## 可复用实体生命组件。
 ##
-## 挂到实体子节点，统一处理伤害、治疗、受伤无敌与死亡通知[br]
-## 默认可以独立运行；需要属性系统时，通过 [member stat_component_path] 显式绑定 [UFrameStats]
+## 负责生命值、伤害、治疗、受伤无敌与死亡通知，可通过 [member stat_component_path] 读取 [UFrameStats]。
+## 不负责碰撞检测、阵营过滤或受伤视觉，这些职责分别属于 Hurtbox、Team 与实体表现脚本。
+## 打开 [code]examples/arena/arena_player.tscn[/code] 可查看本组件与战斗组件的场景组合。
 class_name UFrameHealth
 
 #region 信号
-## [b]生命值变化[/b][br][br]
-## [param old_value] : 变化前生命值[br]
-## [param new_value] : 变化后生命值
+## 生命值发生变化。
+## [param old_value] 是变化前生命值，[param new_value] 是变化后生命值。
 signal hp_changed(old_value: int, new_value: int)
 
-## [b]伤害生效[/b][br]
-## [param amount] 是实际扣除量，不会超过受击前剩余生命值[br][br]
-## [param amount] : 实际伤害[br]
-## [param source] : 伤害来源节点
+## 伤害实际生效。
+## [param amount] 是实际扣除量，不会超过受击前剩余生命值；[param source] 是伤害来源节点。
 signal damaged(amount: int, source: Node)
 
-## [b]治疗生效[/b][br][br]
-## [param amount] : 实际恢复量
+## 治疗实际生效。[param amount] 是实际恢复量。
 signal healed(amount: int)
 
-## [b]死亡[/b][br]
-## 生命值首次降到 [code]0[/code] 时发出[br][br]
-## [param source] : 击杀者节点
+## 生命值首次降到 [code]0[/code] 时发出。[param source] 是击杀来源节点。
 signal died(source: Node)
 #endregion
 
-#region 配置
-## [b]最大生命值[/b][br]
-## 绑定 [UFrameStats] 后改为读取其中 [code]max_hp[/code] 的最终值
+#region Inspector 配置
+## 独立运行时使用的最大生命值；绑定 [UFrameStats] 后改为读取其中 [code]max_hp[/code] 的最终值。
 @export var max_hp: int = 100
 
-## [b]属性组件路径[/b][br]
-## 留空时不使用 [UFrameStats]
+## 可选的 [UFrameStats] 节点路径；留空时独立运行。
 @export var stat_component_path: NodePath
 
-## [b]受伤无敌时间（秒）[/b]
+## 每次伤害生效后的无敌时间，单位为秒；[code]0.0[/code] 表示不启用。
 @export var invincible_duration: float = 0.0
 #endregion
 
-#region 运行时状态
-## [b]当前生命值[/b]
-var hp: int = 100
-
-## [b]剩余无敌时间[/b]
-var _invincible_timer: float = 0.0
-
-## [b]属性组件缓存[/b]
+#region 依赖引用
+## 由 [member stat_component_path] 解析的可选属性组件。
 var _stat_component: UFrameStats = null
 #endregion
 
+#region 运行时状态
+## 当前生命值。
+var hp: int = 100
+
+## 剩余无敌时间，归零后自动停止普通帧处理。
+var _invincible_timer: float = 0.0
+#endregion
+
 #region 生命周期
+## 解析可选属性组件，以有效最大生命初始化当前值，并保持帧处理关闭。
 func _ready() -> void:
 	if not stat_component_path.is_empty():
 		_stat_component = get_node_or_null(stat_component_path) as UFrameStats
@@ -70,11 +66,9 @@ func _process(delta: float) -> void:
 			set_process(false)
 #endregion
 
-#region 主要方法
-## [b]承受伤害[/b][br]
-## 无敌、死亡或非正数伤害不会生效；返回实际扣除量[br][br]
-## [param amount] : 请求伤害值[br]
-## [param source] : 伤害来源节点
+#region 生命操作
+## 请求承受伤害；无敌、死亡或非正数伤害不会生效。
+## [param amount] 是请求伤害值，[param source] 是伤害来源；返回实际扣除量。
 func take_damage(amount: int, source: Node = null) -> int:
 	if _invincible_timer > 0:
 		return 0
@@ -95,9 +89,7 @@ func take_damage(amount: int, source: Node = null) -> int:
 		died.emit(source)
 	return applied
 
-## [b]恢复生命[/b][br]
-## 不会超过有效最大生命值；返回实际恢复量[br][br]
-## [param amount] : 请求治疗量
+## 请求恢复 [param amount] 点生命；不会超过有效最大生命值，并返回实际恢复量。
 func heal(amount: int) -> int:
 	if amount <= 0:
 		return 0
@@ -110,11 +102,9 @@ func heal(amount: int) -> int:
 	healed.emit(applied)
 	return applied
 
-## [b]重置生命组件[/b][br]
-## 清理无敌计时，适合对象池实体重新取出时调用[br]
-## 可选择恢复至有效最大值，或只把当前值限制在合法范围内[br][br]
-## [param fill_to_max] : 是否恢复至有效最大生命值
-func reset(fill_to_max := true) -> void:
+## 清理无敌计时，适合对象池实体重新取出时调用。
+## [param fill_to_max] 为 [code]true[/code] 时补满生命，否则只把当前值限制在合法范围。
+func reset(fill_to_max: bool = true) -> void:
 	var old_hp := hp
 	_invincible_timer = 0.0
 	set_process(false)
@@ -122,8 +112,7 @@ func reset(fill_to_max := true) -> void:
 	if hp != old_hp:
 		hp_changed.emit(old_hp, hp)
 
-## [b]补满生命值[/b][br]
-## 返回实际恢复量，更适合回合重开或对象池实体复用
+## 补满至有效最大生命值并返回实际恢复量，适合回合重开或对象池实体复用。
 func refill() -> int:
 	var old_hp := hp
 	hp = _get_effective_max_hp()
@@ -134,10 +123,8 @@ func refill() -> int:
 		healed.emit(applied)
 	return maxi(applied, 0)
 
-## [b]设置最大生命值[/b][br]
-## 绑定 [UFrameStats] 时修改其中 [code]max_hp[/code] 的基础值，否则修改本组件配置[br][br]
-## [param v] : 新的最大生命值[br]
-## [param fill] : 是否同时补满当前生命值
+## 设置最大生命值。
+## 绑定 [UFrameStats] 时修改其中 [code]max_hp[/code] 的基础值，否则修改本组件配置；[param fill] 决定是否补满。
 func set_max_hp(v: int, fill: bool = true) -> void:
 	v = maxi(v, 1)
 	if _stat_component:
@@ -152,29 +139,26 @@ func set_max_hp(v: int, fill: bool = true) -> void:
 		if hp != old_hp:
 			hp_changed.emit(old_hp, hp)
 
-## [b]设置属性组件[/b][br]
-## 适合纯代码创建的实体；传入 [code]null[/code] 可恢复独立运行[br][br]
-## [param component] : 新的属性组件[br]
-## [param refill] : 是否按新的有效最大值补满生命
-func set_stat_component(component: UFrameStats, refill := false) -> void:
+## 显式设置可选属性组件，适合纯代码创建的实体；传入 [code]null[/code] 可恢复独立运行。
+## [param refill] 决定是否按新的有效最大值补满生命。
+func set_stat_component(component: UFrameStats, refill: bool = false) -> void:
 	_stat_component = component
 	if refill:
 		hp = _get_effective_max_hp()
 #endregion
 
-#region 查询方法
-## [b]判断是否死亡[/b]
+#region 状态查询
+## 判断当前生命值是否已经归零。
 func is_dead() -> bool:
 	return hp <= 0
 
-## [b]判断是否处于无敌状态[/b]
+## 判断受伤无敌计时是否仍在生效。
 func is_invincible() -> bool:
 	return _invincible_timer > 0
 #endregion
 
-#region 内部方法
-## [b]获取有效最大生命值[/b][br]
-## 绑定 [UFrameStats] 时读取 [code]max_hp[/code] 最终值，否则使用 [member max_hp]
+#region 属性读取
+## 获取有效最大生命值；绑定 [UFrameStats] 时读取 [code]max_hp[/code]，否则使用 [member max_hp]。
 func _get_effective_max_hp() -> int:
 	if _stat_component:
 		return int(_stat_component.get_stat("max_hp", float(max_hp)))

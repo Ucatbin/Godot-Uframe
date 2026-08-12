@@ -1,19 +1,31 @@
 extends Control
 
 ## 启动器与背包示例使用的轻量动态背景，仅用 CanvasItem 绘制。
+##
+## 组合位置见 example_browser.tscn 与 loot_demo.tscn 中的全屏 Backdrop。
+## 本脚本不创建子节点，也不保存玩法数据。
 
+#region 配置与状态
+## 网格、光点和环境光使用的强调色。
 @export var accent := Color("#5ca8ff")
+## 程序化背景的累计动画时间。
 var _time := 0.0
+#endregion
 
+#region 生命周期
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+#endregion
 
+#region 公开接口
 ## 修改背景强调色。
 func configure(color: Color) -> void:
 	accent = color
 	queue_redraw()
+#endregion
 
+#region 动画与绘制
 func _process(delta: float) -> void:
 	_time += delta
 	queue_redraw()
@@ -35,3 +47,4 @@ func _draw() -> void:
 		draw_circle(Vector2(px, py), 1.5 + index % 2, Color(accent, alpha))
 	draw_circle(viewport_size * Vector2(0.82, 0.14), 155.0, Color(accent, 0.025))
 	draw_circle(viewport_size * Vector2(0.12, 0.88), 210.0, Color(accent, 0.018))
+#endregion

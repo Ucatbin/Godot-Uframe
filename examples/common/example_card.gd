@@ -1,10 +1,13 @@
 extends Button
 
 ## 启动器中的单张示例卡片。
+##
 ## 静态结构保存在 example_card.tscn；脚本只注入不同示例的数据和少量交互动效。
 
+#region 常量与场景引用
 const UI := preload("res://examples/common/example_ui.gd")
 
+## 下列引用都是模板中稳定存在的显示挂点，卡片数据不会创建第二套 UI 结构。
 @onready var number_label: Label = $Margin/Column/Top/Number
 @onready var genre_label: Label = $Margin/Column/Top/Genre
 @onready var title_label: Label = $Margin/Column/Title
@@ -15,10 +18,16 @@ const UI := preload("res://examples/common/example_ui.gd")
 @onready var separator: HSeparator = $Margin/Column/Separator
 @onready var controls_label: Label = $Margin/Column/Controls
 @onready var enter_label: Label = $Margin/Column/Enter
+#endregion
 
+#region 运行时状态
+## 启动器在实例入树前注入的单张卡片数据。
 var _data: Dictionary
+## 当前悬停或焦点缩放动画；新动画开始时停止旧动画。
 var _animation_tween: Tween
+#endregion
 
+#region 生命周期
 func _ready() -> void:
 	# 子控件只负责显示，鼠标事件统一交给卡片根 Button。
 	for child in find_children("*", "Control", true, false):
@@ -31,8 +40,10 @@ func _ready() -> void:
 	_update_pivot()
 	if not _data.is_empty():
 		_apply_data()
+#endregion
 
-## 注入一张卡片的数据。CardScene 实例化后调用一次即可。
+#region 数据同步
+## 注入一张卡片的数据。共享的 [code]CARD_SCENE[/code] 实例化后调用一次即可。
 func configure(data: Dictionary) -> void:
 	_data = data
 	if is_node_ready():
@@ -60,7 +71,9 @@ func _apply_data() -> void:
 	controls_label.text = _data.controls
 	UI.style_label(controls_label, 13, UI.MUTED)
 	UI.style_label(enter_label, 16, accent.lightened(0.18))
+#endregion
 
+#region 交互动效
 func _update_pivot() -> void:
 	pivot_offset = size * 0.5
 
@@ -76,3 +89,4 @@ func _animate(target_scale: Vector2) -> void:
 		Color.WHITE if target_scale != Vector2.ONE else Color("#eef4ff"),
 		0.14
 	)
+#endregion

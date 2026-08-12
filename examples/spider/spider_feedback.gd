@@ -1,27 +1,71 @@
-class_name SpiderFeedbackOverlay
 extends Control
 
 ## 蜘蛛纸牌的集中式轻量反馈层。
 ##
-## 粒子、圆环和蛛丝轨迹都保存在小型数组中，只在存在效果时开启 _process()。
-## 卡牌本身无需常驻逐帧更新。
+## 粒子、圆环和蛛丝轨迹都保存在小型数组中，只在存在效果时开启 [method Node._process]。
+## 卡牌本身无需常驻逐帧更新；组合位置可在 spider_demo.tscn 中查看。
+class_name SpiderFeedbackOverlay
 
+#region 效果预算
+## 效果数据以 30 Hz 更新，卡牌 Tween 仍由引擎按正常帧率播放。
 const EFFECT_STEP := 1.0 / 30.0
 const MAX_PARTICLES := 32
 const MAX_RINGS := 3
 const MAX_THREADS := 3
+#endregion
 
+#region 运行时状态
 var _particles: Array[Dictionary] = []
 var _rings: Array[Dictionary] = []
 var _threads: Array[Dictionary] = []
 var _effect_accumulator := 0.0
+#endregion
 
+#region 生命周期
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_process(false)
 
+func _process(delta: float) -> void:
+	# 反馈是很短的装饰动画，30 Hz 已足够顺滑；限制更新频率可将 Dictionary
+	# 运算和自定义几何重建减半，同时不会影响卡牌本身的 60 Hz 变换动画。
+	_effect_accumulator += delta
+	if _effect_accumulator < EFFECT_STEP:
+		return
+	var effect_delta := minf(_effect_accumulator, EFFECT_STEP * 2.0)
+	_effect_accumulator = 0.0
+	for particle in _particles:
+		particle.age += effect_delta
+		particle.velocity += Vector2(0, 155.0) * effect_delta
+		particle.position += particle.velocity * effect_delta
+	for ring in _rings:
+		ring.age += effect_delta
+	for thread in _threads:
+		thread.age += effect_delta
+	# 反向原地清理，避免效果活跃时每帧由 filter() 额外分配三个新数组和闭包。
+	for index in range(_particles.size() - 1, -1, -1):
+		if _particles[index].age >= _particles[index].lifetime:
+			_particles.remove_at(index)
+	for index in range(_rings.size() - 1, -1, -1):
+		if _rings[index].age >= _rings[index].lifetime:
+			_rings.remove_at(index)
+	for index in range(_threads.size() - 1, -1, -1):
+		if _threads[index].age >= _threads[index].lifetime:
+			_threads.remove_at(index)
+	queue_redraw()
+	if _particles.is_empty() and _rings.is_empty() and _threads.is_empty():
+		_effect_accumulator = 0.0
+		set_process(false)
+#endregion
+
+#region 反馈接口
 ## 在局部坐标生成一次方向性碎光。
-func burst(origin: Vector2, color: Color, amount := 14, inherited_velocity := Vector2.ZERO) -> void:
+func burst(
+	origin: Vector2,
+	color: Color,
+	amount: int = 14,
+	inherited_velocity: Vector2 = Vector2.ZERO
+) -> void:
 	var resolved_amount := mini(maxi(amount, 1), maxi(MAX_PARTICLES - _particles.size(), 0))
 	for index in resolved_amount:
 		var angle := TAU * float(index) / float(maxi(resolved_amount, 1)) + randf_range(-0.18, 0.18)
@@ -62,38 +106,9 @@ func thread_snap(from: Vector2, to: Vector2, color: Color) -> void:
 func completion_burst(from: Vector2, to: Vector2) -> void:
 	thread_snap(from, to, Color("#74f0c1"))
 	burst(to, Color("#ffc857"), 24, Vector2.UP * 24.0)
+#endregion
 
-func _process(delta: float) -> void:
-	# 反馈是很短的装饰动画，30 Hz 已足够顺滑；限制更新频率可将 Dictionary
-	# 运算和自定义几何重建减半，同时不会影响卡牌本身的 60 Hz 变换动画。
-	_effect_accumulator += delta
-	if _effect_accumulator < EFFECT_STEP:
-		return
-	var effect_delta := minf(_effect_accumulator, EFFECT_STEP * 2.0)
-	_effect_accumulator = 0.0
-	for particle in _particles:
-		particle.age += effect_delta
-		particle.velocity += Vector2(0, 155.0) * effect_delta
-		particle.position += particle.velocity * effect_delta
-	for ring in _rings:
-		ring.age += effect_delta
-	for thread in _threads:
-		thread.age += effect_delta
-	# 反向原地清理，避免效果活跃时每帧由 filter() 额外分配三个新数组和闭包。
-	for index in range(_particles.size() - 1, -1, -1):
-		if _particles[index].age >= _particles[index].lifetime:
-			_particles.remove_at(index)
-	for index in range(_rings.size() - 1, -1, -1):
-		if _rings[index].age >= _rings[index].lifetime:
-			_rings.remove_at(index)
-	for index in range(_threads.size() - 1, -1, -1):
-		if _threads[index].age >= _threads[index].lifetime:
-			_threads.remove_at(index)
-	queue_redraw()
-	if _particles.is_empty() and _rings.is_empty() and _threads.is_empty():
-		_effect_accumulator = 0.0
-		set_process(false)
-
+#region 程序化绘制
 func _draw() -> void:
 	for thread in _threads:
 		var ratio: float = thread.age / thread.lifetime
@@ -119,3 +134,4 @@ func _draw() -> void:
 		# 一半粒子带拖尾即可形成方向感，减少短时峰值中的绘制命令。
 		if index % 2 == 0:
 			draw_line(point, point - particle.velocity.normalized() * radius * 2.8, Color(particle.color, alpha * 0.42), 1.0)
+#endregion

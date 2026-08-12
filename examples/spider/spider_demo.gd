@@ -6,8 +6,7 @@ extends Control
 ## 只有数量取决于牌局状态的 Card View 才从 PackedScene 动态实例化；104 张牌的规则
 ## 统一保存在 SpiderGameModel 中，卡牌 View 不持有第二份玩法数据。
 
-#region 配置与场景引用
-
+#region 配置
 const UI := preload("res://examples/common/example_ui.gd")
 const MENU_SCENE := "res://examples/example_browser.tscn"
 
@@ -23,7 +22,10 @@ const CARD_SIZE := SpiderCardView.CARD_SIZE
 @export var card_scene: PackedScene
 ## 宿主可以在 Inspector 决定默认难度；玩家仍可在运行时用三个场景按钮切换。
 @export_enum("单色:1", "双色:2", "四色:4") var default_suit_count := 1
+#endregion
 
+#region 场景引用
+## 固定桌面、十列挂点与三层 Card View 容器。
 @onready var board_stage: Control = %BoardStage
 @onready var table_surface: Panel = $BoardStage/TableSurface
 @onready var tableau: HBoxContainer = %Tableau
@@ -31,6 +33,7 @@ const CARD_SIZE := SpiderCardView.CARD_SIZE
 @onready var drag_layer: Control = %DragLayer
 @onready var feedback_overlay: SpiderFeedbackOverlay = %FeedbackOverlay
 
+## 标题、难度、牌局数据、命令按钮与集中反馈 UI。
 @onready var header_panel: PanelContainer = $HeaderMargin/HeaderPanel
 @onready var moves_label: Label = %MovesLabel
 @onready var score_label: Label = %ScoreLabel
@@ -49,21 +52,29 @@ const CARD_SIZE := SpiderCardView.CARD_SIZE
 @onready var message_label: Label = %MessageLabel
 @onready var big_feedback: Label = %BigFeedback
 @onready var screen_flash: ColorRect = %ScreenFlash
+#endregion
 
+#region 运行时状态
+## 牌局唯一规则来源；控制器只把结果同步到 Card View。
 var game := SpiderGameModel.new()
+## 与场景中的十个固定列和八个完成槽位一一对应。
 var _column_guides: Array[Panel] = []
 var _completed_slots: Array[Panel] = []
 ## card_id → SpiderCardView。字典让同步和拖拽都不必扫描全部场景子节点。
 var _card_views: Dictionary = {}
+## 花色数量到场景中三个固定难度按钮的映射。
 var _difficulty_buttons: Dictionary = {}
+## 当前选择的 1、2 或 4 花色难度。
 var _selected_suit_count := 1
 
+## 当前拖拽牌组及其相对位置；结束操作后统一清空。
 var _dragged_views: Array[SpiderCardView] = []
 var _drag_offsets: Array[Vector2] = []
 var _drag_from_column := -1
 var _drag_start_index := -1
 var _drag_mouse_offset := Vector2.ZERO
 
+## 复用的界面样式与当前增量显示状态。
 var _normal_column_style: StyleBoxFlat
 var _valid_column_style: StyleBoxFlat
 var _invalid_column_style: StyleBoxFlat
@@ -76,8 +87,11 @@ var _highlight_is_valid := false
 var _styled_difficulty := -1
 var _displayed_completed_runs := -1
 
+## 操作锁、短时视觉计时与可被新反馈替换的 Tween。
 var _busy := false
+## 每次操作锁递增；旧计时回调只有序号仍匹配时才能解除新锁。
 var _busy_serial := 0
+## 每次提示递增；旧提示回调只有序号仍匹配时才能清除新高亮。
 var _hint_serial := 0
 var _changing_scene := false
 var _visual_time := 0.0
@@ -93,8 +107,6 @@ var _entry_tween: Tween
 #endregion
 
 #region 生命周期与输入
-
-
 func _ready() -> void:
 	_selected_suit_count = default_suit_count if default_suit_count in [1, 2, 4] else 1
 	for child in tableau.get_children():
@@ -126,16 +138,14 @@ func _ready() -> void:
 	# Container 要先完成一次布局，之后才能取得十列的准确位置。
 	_start_new_game.call_deferred()
 
-
 ## 只有桌面背景使用一个共享更新：限制到约 20 次重绘/秒。
-## 每张牌没有常驻 _process()，短动画全部交给 Tween。
+## 每张牌没有常驻 [method Node._process]，短动画全部交给 Tween。
 func _process(delta: float) -> void:
 	_visual_time = fmod(_visual_time + delta, 1000.0)
 	_redraw_accumulator += delta
 	if _redraw_accumulator >= 1.0 / 20.0:
 		_redraw_accumulator = 0.0
 		queue_redraw()
-
 
 func _input(event: InputEvent) -> void:
 	if _dragged_views.is_empty():
@@ -149,7 +159,6 @@ func _input(event: InputEvent) -> void:
 	if button and button.button_index == MOUSE_BUTTON_LEFT and not button.pressed:
 		_finish_drag()
 		get_viewport().set_input_as_handled()
-
 
 func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
@@ -175,110 +184,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	get_viewport().set_input_as_handled()
 
-
-func _draw() -> void:
-	var viewport_size := get_viewport_rect().size
-	draw_rect(Rect2(Vector2.ZERO, viewport_size), Color("#02080b"))
-	# 少量稳定星点和双色辉光营造“午夜印刷品”层次，不创建额外节点。
-	draw_circle(Vector2(viewport_size.x * 0.18, viewport_size.y * 0.18), 240.0, Color(MINT, 0.025))
-	draw_circle(Vector2(viewport_size.x * 0.82, viewport_size.y * 0.34), 210.0, Color(CLIMAX, 0.022))
-	for index in 28:
-		var point := Vector2(float((index * 137) % 1040) - 30.0, float((index * 83) % 680) - 20.0)
-		var twinkle := 0.18 + 0.08 * sin(_visual_time * 1.8 + float(index))
-		draw_circle(point, 0.8 + float(index % 3) * 0.25, Color(MINT, twinkle))
-
-	# 桌面下方的大蛛网只由几十条 Canvas 绘制命令组成。
-	var web_center := Vector2(viewport_size.x * 0.52, viewport_size.y * 0.66)
-	var web_radius := maxf(viewport_size.x, viewport_size.y) * 0.68
-	for index in 16:
-		var angle := TAU * float(index) / 16.0 + 0.05 * sin(_visual_time * 0.45)
-		draw_line(web_center, web_center + Vector2.from_angle(angle) * web_radius, Color(MINT, 0.050), 1.0)
-	for ring in 7:
-		var radius := web_radius * float(ring + 1) / 7.0
-		draw_arc(web_center, radius, 0.0, TAU, 48, Color(MINT, 0.035 + float(ring % 2) * 0.012), 1.0)
-
-#endregion
-
-#region 静态界面样式
-
-
-func _style_static_interface() -> void:
-	UI.apply_panel(header_panel, MINT, 8)
-	# 消息只修改这一份 StyleBox 的边框色；每次动作不再分配新 Resource。
-	_message_style = UI.panel_style(UI.SURFACE, MINT.darkened(0.28), 14, 9)
-	message_panel.add_theme_stylebox_override("panel", _message_style)
-	var table_style := UI.panel_style(TABLE_COLOR, MINT.darkened(0.62), 20, 0)
-	table_style.shadow_color = Color(0.0, 0.0, 0.0, 0.38)
-	table_style.shadow_size = 12
-	table_surface.add_theme_stylebox_override("panel", table_style)
-
-	UI.style_label($HeaderMargin/HeaderPanel/HeaderRow/TitleBlock/Title, 24, Color("#f4e6c5"))
-	UI.style_label(difficulty_label, 11, UI.MUTED.lightened(0.08))
-	UI.style_label(moves_label, 13, UI.MUTED)
-	UI.style_label(score_label, 19, GOLD)
-	UI.style_label(stock_label, 12, UI.MUTED.lightened(0.08))
-	UI.style_label(completed_label, 13, MINT)
-	UI.style_label(message_label, 13, Color("#d9f7e8"))
-	UI.style_label(big_feedback, 36, GOLD)
-	big_feedback.add_theme_color_override("font_outline_color", Color("#06120f"))
-	big_feedback.add_theme_constant_override("outline_size", 9)
-
-	UI.apply_button(deal_button, GOLD, true)
-	UI.apply_button(undo_button, MINT)
-	UI.apply_button(new_game_button, CLIMAX)
-	UI.apply_button(back_button, UI.MUTED)
-	# 禁用仍需一眼可读；只用背景和边框表达不可操作状态。
-	undo_button.add_theme_color_override("font_disabled_color", UI.MUTED)
-	deal_button.add_theme_color_override("font_disabled_color", UI.MUTED)
-
-	_normal_column_style = _make_column_style(Color(MINT, 0.025), Color(MINT, 0.12), 1)
-	_valid_column_style = _make_column_style(Color(MINT, 0.105), Color(MINT, 0.72), 2)
-	_invalid_column_style = _make_column_style(Color(DANGER, 0.095), Color(DANGER, 0.76), 2)
-	_hint_column_style = _make_column_style(Color(GOLD, 0.10), Color(GOLD, 0.72), 2)
-	_empty_run_style = UI.panel_style(Color(MINT, 0.035), Color(MINT, 0.18), 5, 0)
-	_empty_run_style.set_border_width_all(1)
-	_filled_run_style = UI.panel_style(Color(GOLD, 0.32), GOLD, 5, 0)
-	_filled_run_style.set_border_width_all(2)
-	for guide in _column_guides:
-		guide.add_theme_stylebox_override("panel", _normal_column_style)
-	_refresh_completed_slots()
-	_refresh_difficulty_buttons()
-
-
-func _make_column_style(background: Color, border: Color, width: int) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.border_color = border
-	style.set_border_width_all(width)
-	style.set_corner_radius_all(10)
-	return style
-
-
-func _apply_compact_difficulty_style(button: Button, accent: Color, active: bool) -> void:
-	var normal_background := accent.darkened(0.55) if active else TABLE_RAISED
-	var normal := UI.panel_style(normal_background, accent.darkened(0.28), 6, 4)
-	var hover := normal.duplicate() as StyleBoxFlat
-	hover.bg_color = accent.darkened(0.42) if active else TABLE_RAISED.lightened(0.08)
-	hover.border_color = accent
-	var pressed := normal.duplicate() as StyleBoxFlat
-	pressed.bg_color = accent.darkened(0.62)
-	var disabled := normal.duplicate() as StyleBoxFlat
-	disabled.bg_color = normal_background.darkened(0.12)
-	disabled.border_color = accent.darkened(0.42)
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.add_theme_stylebox_override("disabled", disabled)
-	button.add_theme_font_size_override("font_size", 11)
-	button.add_theme_color_override("font_color", accent.lightened(0.24) if active else UI.MUTED)
-	button.add_theme_color_override("font_hover_color", Color.WHITE)
-	button.add_theme_color_override("font_pressed_color", Color.WHITE)
-	button.add_theme_color_override("font_disabled_color", accent.darkened(0.04) if active else UI.MUTED.darkened(0.18))
-
 #endregion
 
 #region 牌局与重复 View 同步
-
 
 func _select_difficulty(suit_count: int) -> void:
 	if _busy or suit_count not in [1, 2, 4]:
@@ -290,7 +198,6 @@ func _select_difficulty(suit_count: int) -> void:
 	_start_new_game()
 	var accent := MINT if suit_count == 1 else (GOLD if suit_count == 2 else CLIMAX)
 	_flash_screen(accent, 0.10)
-
 
 func _refresh_difficulty_buttons() -> void:
 	if _difficulty_buttons.is_empty():
@@ -307,19 +214,16 @@ func _refresh_difficulty_buttons() -> void:
 		var button := _difficulty_buttons[suit_count] as Button
 		button.disabled = _busy
 
-
-func _difficulty_name(suit_count := _selected_suit_count) -> String:
+func _difficulty_name(suit_count: int = _selected_suit_count) -> String:
 	match suit_count:
 		2: return "双色"
 		4: return "四色"
 		_: return "单色"
 
-
 func _difficulty_hint() -> String:
 	if _selected_suit_count == 1:
 		return "单色：拖拽或右键自动移动降序牌组 · 空列可放任意牌 · H 显示提示"
 	return "%s：右键优先同花色目标 · 整组拖动与 K→A 收组必须同花色" % _difficulty_name()
-
 
 func _start_new_game() -> void:
 	if _changing_scene:
@@ -339,9 +243,13 @@ func _start_new_game() -> void:
 	_show_message(_difficulty_hint(), 4.2, MINT if _selected_suit_count == 1 else (GOLD if _selected_suit_count == 2 else CLIMAX))
 	_show_big_feedback("%s蛛网已展开" % _difficulty_name(), MINT if _selected_suit_count == 1 else (GOLD if _selected_suit_count == 2 else CLIMAX), 0.72)
 
-
 ## 用模型状态增量同步 Card View；不会重建十列或其他固定 UI。
-func _sync_board(created_ids: Array = [], stagger_created := false, duration := 0.18, changed_columns: Array = []) -> void:
+func _sync_board(
+	created_ids: Array = [],
+	stagger_created: bool = false,
+	duration: float = 0.18,
+	changed_columns: Array = []
+) -> void:
 	if card_scene == null:
 		push_error("[SpiderDemo] 请在 SpiderDemo 根节点配置 Card Scene")
 		return
@@ -381,8 +289,7 @@ func _sync_board(created_ids: Array = [], stagger_created := false, duration := 
 		_layout_columns(changed_columns, duration, created_order if stagger_created else {})
 	_refresh_hud()
 
-
-func _create_card_view(card: Dictionary, animate_entry := false) -> SpiderCardView:
+func _create_card_view(card: Dictionary, animate_entry: bool = false) -> SpiderCardView:
 	var instance := card_scene.instantiate()
 	var view := instance as SpiderCardView
 	if view == null:
@@ -406,17 +313,19 @@ func _create_card_view(card: Dictionary, animate_entry := false) -> SpiderCardVi
 	_card_views[card_id] = view
 	return view
 
-
-func _layout_all_cards(duration := 0.18, created_order: Dictionary = {}) -> void:
+func _layout_all_cards(duration: float = 0.18, created_order: Dictionary = {}) -> void:
 	var all_columns: Array[int] = []
 	for column_index in game.columns.size():
 		all_columns.append(column_index)
 	_layout_columns(all_columns, duration, created_order)
 
-
 ## 只有来源列和目标列会因一次合法拖牌改变；增量布局避免扫描并写回整副牌。
-## 发牌、新局和撤销仍调用 _layout_all_cards()，因为它们可能同时影响十列。
-func _layout_columns(column_indices: Array, duration := 0.18, created_order: Dictionary = {}) -> void:
+## 发牌、新局和撤销仍调用 [method _layout_all_cards]，因为它们可能同时影响十列。
+func _layout_columns(
+	column_indices: Array,
+	duration: float = 0.18,
+	created_order: Dictionary = {}
+) -> void:
 	var visited: Dictionary = {}
 	if not created_order.is_empty():
 		if _entry_tween and _entry_tween.is_valid():
@@ -455,7 +364,6 @@ func _layout_columns(column_indices: Array, duration := 0.18, created_order: Dic
 			else:
 				view.move_to(positions[card_index], duration, delay)
 
-
 func _column_card_positions(column_index: int) -> Array[Vector2]:
 	var result: Array[Vector2] = []
 	if column_index < 0 or column_index >= _column_guides.size():
@@ -485,7 +393,6 @@ func _column_card_positions(column_index: int) -> Array[Vector2]:
 
 #region 拖拽交互
 
-
 ## 右键不进入拖拽状态，直接让纯规则模型选择目标并复用统一移动表现。
 func _on_card_auto_move_requested(view: SpiderCardView) -> void:
 	if _busy or _changing_scene or not _dragged_views.is_empty() or not view.face_up:
@@ -510,7 +417,6 @@ func _on_card_auto_move_requested(view: SpiderCardView) -> void:
 	var target_guide := _column_guides[target_column]
 	var target_global := target_guide.global_position + Vector2(target_guide.size.x * 0.5, 28.0)
 	_perform_move(from_column, start_index, target_column, from_global, target_global, true)
-
 
 func _on_card_pressed(view: SpiderCardView) -> void:
 	if _busy or _changing_scene or not _dragged_views.is_empty() or not view.face_up:
@@ -554,7 +460,6 @@ func _on_card_pressed(view: SpiderCardView) -> void:
 	_drag_mouse_offset = drag_layer.get_local_mouse_position() - first_position
 	_update_drag_position()
 
-
 func _update_drag_position() -> void:
 	if _dragged_views.is_empty():
 		return
@@ -564,7 +469,6 @@ func _update_drag_position() -> void:
 	var target_column := _column_at_global_point(get_viewport().get_mouse_position())
 	var valid := target_column >= 0 and game.can_move(_drag_from_column, _drag_start_index, target_column)
 	_set_column_highlight(target_column, valid)
-
 
 func _finish_drag() -> void:
 	if _dragged_views.is_empty():
@@ -587,7 +491,6 @@ func _finish_drag() -> void:
 
 	_perform_move(from_column, start_index, target_column, from_global, target_global)
 
-
 ## 拖拽和右键共用这一条提交路径，避免两套移动动画以后出现规则或性能差异。
 func _perform_move(
 	from_column: int,
@@ -595,7 +498,7 @@ func _perform_move(
 	target_column: int,
 	from_global: Vector2,
 	target_global: Vector2,
-	automatic := false
+	automatic: bool = false
 ) -> bool:
 	var destination_was_empty := game.columns[target_column].is_empty()
 	var moving_card := game.columns[from_column][start_index] as Dictionary
@@ -628,7 +531,6 @@ func _perform_move(
 	_lock_actions(maxf(0.24, completion_time + 0.10))
 	return true
 
-
 func _end_drag_visuals() -> void:
 	for view in _dragged_views:
 		if not is_instance_valid(view):
@@ -641,7 +543,6 @@ func _end_drag_visuals() -> void:
 	_drag_start_index = -1
 	_clear_column_highlight()
 
-
 func _cancel_drag() -> void:
 	if not _dragged_views.is_empty():
 		_end_drag_visuals()
@@ -650,7 +551,6 @@ func _cancel_drag() -> void:
 #endregion
 
 #region 玩法动作
-
 
 func _on_deal_pressed() -> void:
 	if _busy or _changing_scene or not _dragged_views.is_empty():
@@ -680,7 +580,6 @@ func _on_deal_pressed() -> void:
 	_pop_score()
 	_lock_actions(maxf(0.62, completion_time + 0.10))
 
-
 func _on_undo_pressed() -> void:
 	if _busy or _changing_scene or not _dragged_views.is_empty():
 		return
@@ -692,7 +591,6 @@ func _on_undo_pressed() -> void:
 	feedback_overlay.burst(_local_point(feedback_overlay, undo_button.global_position + undo_button.size * 0.5), CLIMAX, 14)
 	_show_message("已恢复动作前的牌列、翻面、库存、步数和分数", 2.0, CLIMAX)
 	_lock_actions(0.28)
-
 
 func _prepare_removed_views(result: Dictionary) -> float:
 	var removed_ids := result.get("removed_ids", []) as Array
@@ -741,7 +639,6 @@ func _prepare_removed_views(result: Dictionary) -> float:
 		_play_completion_feedback(completed_delta)
 	return latest_end
 
-
 func _materialize_missing_removed_cards(removed_ids: Array, pending_data: Dictionary) -> void:
 	for card_id_value in removed_ids:
 		var card_id := int(card_id_value)
@@ -751,7 +648,6 @@ func _materialize_missing_removed_cards(removed_ids: Array, pending_data: Dictio
 		# 这张牌已经由 deal_stock() 发到桌面，收组动画必须显示它的正面。
 		card["face_up"] = true
 		_create_card_view(card)
-
 
 func _play_completion_feedback(completed_delta: int) -> void:
 	var bonus := completed_delta * 100
@@ -763,7 +659,6 @@ func _play_completion_feedback(completed_delta: int) -> void:
 	if game.is_won():
 		_show_big_feedback("八组完成 · 蜘蛛大师", CLIMAX, 1.45)
 		_flash_screen(CLIMAX, 0.26)
-
 
 func _show_hint() -> void:
 	# 切换场景时不再创建提示 Tween，避免离场瞬间产生无意义的短动画。
@@ -802,7 +697,6 @@ func _show_hint() -> void:
 
 #region 列目标、HUD 与操作锁
 
-
 func _column_at_global_point(global_point: Vector2) -> int:
 	var board_rect := board_stage.get_global_rect().grow(12.0)
 	if not board_rect.has_point(global_point):
@@ -818,8 +712,7 @@ func _column_at_global_point(global_point: Vector2) -> int:
 			nearest = index
 	return nearest if nearest_distance <= 58.0 else -1
 
-
-func _set_column_highlight(column_index: int, valid: bool, hint := false) -> void:
+func _set_column_highlight(column_index: int, valid: bool, hint: bool = false) -> void:
 	if column_index < 0 or column_index >= _column_guides.size():
 		_clear_column_highlight()
 		return
@@ -831,13 +724,11 @@ func _set_column_highlight(column_index: int, valid: bool, hint := false) -> voi
 	var style := _hint_column_style if hint else (_valid_column_style if valid else _invalid_column_style)
 	_column_guides[column_index].add_theme_stylebox_override("panel", style)
 
-
 func _clear_column_highlight() -> void:
 	if _highlighted_column >= 0 and _highlighted_column < _column_guides.size():
 		_column_guides[_highlighted_column].add_theme_stylebox_override("panel", _normal_column_style)
 	_highlighted_column = -1
 	_highlight_is_valid = false
-
 
 func _refresh_hud() -> void:
 	moves_label.text = "步数  %d" % game.move_count
@@ -850,7 +741,6 @@ func _refresh_hud() -> void:
 	undo_button.disabled = _busy or not game.can_undo()
 	new_game_button.disabled = _busy
 
-
 func _refresh_completed_slots() -> void:
 	if _displayed_completed_runs == game.completed_runs:
 		return
@@ -860,7 +750,6 @@ func _refresh_completed_slots() -> void:
 		var filled := index < game.completed_runs
 		slot.add_theme_stylebox_override("panel", _filled_run_style if filled else _empty_run_style)
 
-
 func _set_busy(value: bool) -> void:
 	if _busy == value:
 		return
@@ -868,7 +757,6 @@ func _set_busy(value: bool) -> void:
 	# _on_card_pressed() 已用 _busy 拒绝操作，锁定期间无需遍历 104 张牌切换输入。
 	# interactive 只表达牌是否翻开；这样不会因一次动作制造整盘 Hover Tween。
 	_refresh_hud()
-
 
 func _lock_actions(duration: float) -> void:
 	_busy_serial += 1
@@ -883,8 +771,147 @@ func _lock_actions(duration: float) -> void:
 
 #endregion
 
-#region 集中式视觉反馈
+#region 文本、坐标与场景切换
 
+func _reason_text(reason: String) -> String:
+	match reason:
+		"empty_column": return "存在空列时不能发牌：先把任意牌组移入空列"
+		"no_stock": return "库存已经发完，继续整理桌面上的牌"
+		"no_history": return "还没有可以撤销的动作"
+		"broken_sequence": return "整组移动必须全部翻开、同花色并逐张降序"
+		"rank_mismatch": return "目标列顶牌必须比所拖牌组的底牌大 1"
+		"same_column": return "牌组已经位于这一列"
+		"already_won": return "八组序列已经全部完成"
+		_: return "这个动作现在无法执行"
+
+func _stock_origin_in(layer: Control) -> Vector2:
+	# 起点藏在 Header 内、发牌按钮底缘附近；卡牌向下移动时才像从牌堆中抽出。
+	var hidden_top_left := deal_button.global_position + Vector2(
+		(deal_button.size.x - CARD_SIZE.x) * 0.5,
+		deal_button.size.y - 18.0
+	)
+	return _local_point(layer, hidden_top_left)
+
+## Control 没有 [method Node2D.to_local]；用 CanvasItem 的全局变换显式完成坐标转换。
+## 集中到这里可避免拖拽层、卡牌层和特效层之间出现各自不同的换算方式。
+func _local_point(control: Control, global_point: Vector2) -> Vector2:
+	return control.get_global_transform().affine_inverse() * global_point
+
+func _on_viewport_resized() -> void:
+	board_stage.pivot_offset = board_stage.size * 0.5
+	_layout_all_cards.call_deferred(0.0, {})
+	queue_redraw()
+
+func _return_to_menu() -> void:
+	if _changing_scene:
+		return
+	_changing_scene = true
+	_cancel_drag()
+	if UFrame.transitions and await UFrame.transitions.change_scene(MENU_SCENE, 0.16):
+		return
+	get_tree().change_scene_to_file(MENU_SCENE)
+
+#endregion
+
+#region 静态界面样式
+
+func _style_static_interface() -> void:
+	UI.apply_panel(header_panel, MINT, 8)
+	# 消息只修改这一份 StyleBox 的边框色；每次动作不再分配新 Resource。
+	_message_style = UI.panel_style(UI.SURFACE, MINT.darkened(0.28), 14, 9)
+	message_panel.add_theme_stylebox_override("panel", _message_style)
+	var table_style := UI.panel_style(TABLE_COLOR, MINT.darkened(0.62), 20, 0)
+	table_style.shadow_color = Color(0.0, 0.0, 0.0, 0.38)
+	table_style.shadow_size = 12
+	table_surface.add_theme_stylebox_override("panel", table_style)
+
+	UI.style_label($HeaderMargin/HeaderPanel/HeaderRow/TitleBlock/Title, 24, Color("#f4e6c5"))
+	UI.style_label(difficulty_label, 11, UI.MUTED.lightened(0.08))
+	UI.style_label(moves_label, 13, UI.MUTED)
+	UI.style_label(score_label, 19, GOLD)
+	UI.style_label(stock_label, 12, UI.MUTED.lightened(0.08))
+	UI.style_label(completed_label, 13, MINT)
+	UI.style_label(message_label, 13, Color("#d9f7e8"))
+	UI.style_label(big_feedback, 36, GOLD)
+	big_feedback.add_theme_color_override("font_outline_color", Color("#06120f"))
+	big_feedback.add_theme_constant_override("outline_size", 9)
+
+	UI.apply_button(deal_button, GOLD, true)
+	UI.apply_button(undo_button, MINT)
+	UI.apply_button(new_game_button, CLIMAX)
+	UI.apply_button(back_button, UI.MUTED)
+	# 禁用仍需一眼可读；只用背景和边框表达不可操作状态。
+	undo_button.add_theme_color_override("font_disabled_color", UI.MUTED)
+	deal_button.add_theme_color_override("font_disabled_color", UI.MUTED)
+
+	_normal_column_style = _make_column_style(Color(MINT, 0.025), Color(MINT, 0.12), 1)
+	_valid_column_style = _make_column_style(Color(MINT, 0.105), Color(MINT, 0.72), 2)
+	_invalid_column_style = _make_column_style(Color(DANGER, 0.095), Color(DANGER, 0.76), 2)
+	_hint_column_style = _make_column_style(Color(GOLD, 0.10), Color(GOLD, 0.72), 2)
+	_empty_run_style = UI.panel_style(Color(MINT, 0.035), Color(MINT, 0.18), 5, 0)
+	_empty_run_style.set_border_width_all(1)
+	_filled_run_style = UI.panel_style(Color(GOLD, 0.32), GOLD, 5, 0)
+	_filled_run_style.set_border_width_all(2)
+	for guide in _column_guides:
+		guide.add_theme_stylebox_override("panel", _normal_column_style)
+	_refresh_completed_slots()
+	_refresh_difficulty_buttons()
+
+func _make_column_style(background: Color, border: Color, width: int) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = background
+	style.border_color = border
+	style.set_border_width_all(width)
+	style.set_corner_radius_all(10)
+	return style
+
+func _apply_compact_difficulty_style(button: Button, accent: Color, active: bool) -> void:
+	var normal_background := accent.darkened(0.55) if active else TABLE_RAISED
+	var normal := UI.panel_style(normal_background, accent.darkened(0.28), 6, 4)
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = accent.darkened(0.42) if active else TABLE_RAISED.lightened(0.08)
+	hover.border_color = accent
+	var pressed := normal.duplicate() as StyleBoxFlat
+	pressed.bg_color = accent.darkened(0.62)
+	var disabled := normal.duplicate() as StyleBoxFlat
+	disabled.bg_color = normal_background.darkened(0.12)
+	disabled.border_color = accent.darkened(0.42)
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_stylebox_override("disabled", disabled)
+	button.add_theme_font_size_override("font_size", 11)
+	button.add_theme_color_override("font_color", accent.lightened(0.24) if active else UI.MUTED)
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.add_theme_color_override("font_pressed_color", Color.WHITE)
+	button.add_theme_color_override("font_disabled_color", accent.darkened(0.04) if active else UI.MUTED.darkened(0.18))
+
+#endregion
+
+#region 程序化背景
+func _draw() -> void:
+	var viewport_size := get_viewport_rect().size
+	draw_rect(Rect2(Vector2.ZERO, viewport_size), Color("#02080b"))
+	# 少量稳定星点和双色辉光营造“午夜印刷品”层次，不创建额外节点。
+	draw_circle(Vector2(viewport_size.x * 0.18, viewport_size.y * 0.18), 240.0, Color(MINT, 0.025))
+	draw_circle(Vector2(viewport_size.x * 0.82, viewport_size.y * 0.34), 210.0, Color(CLIMAX, 0.022))
+	for index in 28:
+		var point := Vector2(float((index * 137) % 1040) - 30.0, float((index * 83) % 680) - 20.0)
+		var twinkle := 0.18 + 0.08 * sin(_visual_time * 1.8 + float(index))
+		draw_circle(point, 0.8 + float(index % 3) * 0.25, Color(MINT, twinkle))
+
+	# 桌面下方的大蛛网只由几十条 Canvas 绘制命令组成。
+	var web_center := Vector2(viewport_size.x * 0.52, viewport_size.y * 0.66)
+	var web_radius := maxf(viewport_size.x, viewport_size.y) * 0.68
+	for index in 16:
+		var angle := TAU * float(index) / 16.0 + 0.05 * sin(_visual_time * 0.45)
+		draw_line(web_center, web_center + Vector2.from_angle(angle) * web_radius, Color(MINT, 0.050), 1.0)
+	for ring in 7:
+		var radius := web_radius * float(ring + 1) / 7.0
+		draw_arc(web_center, radius, 0.0, TAU, 48, Color(MINT, 0.035 + float(ring % 2) * 0.012), 1.0)
+#endregion
+
+#region 集中式视觉反馈
 
 func _show_message(text: String, duration: float, accent: Color) -> void:
 	message_label.text = text
@@ -896,7 +923,6 @@ func _show_message(text: String, duration: float, accent: Color) -> void:
 	_message_tween = create_tween()
 	_message_tween.tween_interval(maxf(duration, 0.1))
 	_message_tween.tween_property(message_panel, "modulate:a", 0.46, 0.38)
-
 
 func _show_big_feedback(text: String, color: Color, hold_time: float) -> void:
 	if _feedback_tween and _feedback_tween.is_valid():
@@ -918,7 +944,6 @@ func _show_big_feedback(text: String, color: Color, hold_time: float) -> void:
 	_feedback_tween.tween_property(big_feedback, "scale", Vector2(1.12, 1.12), 0.28)
 	_feedback_tween.tween_property(big_feedback, "modulate:a", 0.0, 0.28)
 
-
 func _flash_screen(color: Color, strength: float) -> void:
 	if _flash_tween and _flash_tween.is_valid():
 		_flash_tween.kill()
@@ -926,7 +951,6 @@ func _flash_screen(color: Color, strength: float) -> void:
 	_flash_tween = create_tween()
 	_flash_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_flash_tween.tween_property(screen_flash, "color:a", 0.0, 0.42)
-
 
 ## 只晃动牌桌，不晃动标题、按钮与提示文字，保证反馈强烈但仍容易阅读。
 func _shake_board(strong: bool) -> void:
@@ -945,7 +969,6 @@ func _shake_board(strong: bool) -> void:
 	_board_tween.set_parallel(true)
 	_board_tween.tween_property(board_stage, "scale", Vector2.ONE, 0.20)
 
-
 func _pop_score() -> void:
 	if _score_tween and _score_tween.is_valid():
 		_score_tween.kill()
@@ -956,52 +979,5 @@ func _pop_score() -> void:
 	_score_tween.tween_property(score_label, "scale", Vector2(1.18, 1.18), 0.11)
 	_score_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 	_score_tween.tween_property(score_label, "scale", Vector2.ONE, 0.16)
-
-#endregion
-
-#region 工具与场景切换
-
-
-func _reason_text(reason: String) -> String:
-	match reason:
-		"empty_column": return "存在空列时不能发牌：先把任意牌组移入空列"
-		"no_stock": return "库存已经发完，继续整理桌面上的牌"
-		"no_history": return "还没有可以撤销的动作"
-		"broken_sequence": return "整组移动必须全部翻开、同花色并逐张降序"
-		"rank_mismatch": return "目标列顶牌必须比所拖牌组的底牌大 1"
-		"same_column": return "牌组已经位于这一列"
-		"already_won": return "八组序列已经全部完成"
-		_: return "这个动作现在无法执行"
-
-
-func _stock_origin_in(layer: Control) -> Vector2:
-	# 起点藏在 Header 内、发牌按钮底缘附近；卡牌向下移动时才像从牌堆中抽出。
-	var hidden_top_left := deal_button.global_position + Vector2(
-		(deal_button.size.x - CARD_SIZE.x) * 0.5,
-		deal_button.size.y - 18.0
-	)
-	return _local_point(layer, hidden_top_left)
-
-
-## Control 没有 Node2D.to_local()；用 CanvasItem 的全局变换显式完成坐标转换。
-## 集中到这里可避免拖拽层、卡牌层和特效层之间出现各自不同的换算方式。
-func _local_point(control: Control, global_point: Vector2) -> Vector2:
-	return control.get_global_transform().affine_inverse() * global_point
-
-
-func _on_viewport_resized() -> void:
-	board_stage.pivot_offset = board_stage.size * 0.5
-	_layout_all_cards.call_deferred(0.0, {})
-	queue_redraw()
-
-
-func _return_to_menu() -> void:
-	if _changing_scene:
-		return
-	_changing_scene = true
-	_cancel_drag()
-	if UFrame.transitions and await UFrame.transitions.change_scene(MENU_SCENE, 0.16):
-		return
-	get_tree().change_scene_to_file(MENU_SCENE)
 
 #endregion

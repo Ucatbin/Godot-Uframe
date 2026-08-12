@@ -2,17 +2,16 @@
 
 UFrame 是面向 Godot 4.7 的轻量 2D 游戏基础插件。它只注册一个 `UFrame` Autoload；其余能力是可选服务、局部组件或 Resource。
 
-仓库内置四个可运行示例，参见 [`res://examples/README.md`](../../examples/README.md)。启动示例浏览器后可按 `1 / 2 / 3 / 4` 快速进入对应玩法。
+本 README 随插件目录独立分发，包含安装、配置、组合边界和主要公共用法。
 
 ## 设计边界
 
 | 区域 | 负责 | 明确不负责 |
 |---|---|---|
-| `core/` | 插件入口、低频跨系统事件、内容注册 | 实体战斗与 UI |
+| `core/` | 游戏运行时入口、低频跨系统事件、内容注册 | EditorPlugin、实体战斗与 UI |
 | `services/` | 跨场景且确实需要全局唯一的能力 | 玩家局部状态 |
 | `components/` | 可挂载到实体的局部规则 | 项目专属画面与物品定义 |
 | `resources/` | 可序列化的静态配置与存档数据 | 场景树生命周期 |
-| `examples/` | 具体玩法、UI、原生绘制特效 | 框架公共 API |
 
 框架不再提供 Godot 已有等价 API 的 `MathUtil`、`ColorUtil`、`NodeUtil`、`TimeUtil` 或自制 Easing；直接使用引擎原生函数更短、更快，也更容易查文档。
 
@@ -32,9 +31,9 @@ Player (CharacterBody2D)       # Entity：可复用玩家场景
 │   ├── Movement              # UFrameBehavior 子类
 │   └── DamageFeedback
 └── StateMachine              # 互斥状态容器：UFrameStateMachine
-    ├── Idle                  # UFrameState 子类
-    ├── Run
-    └── Air
+	├── Idle                  # UFrameState 子类
+	├── Run
+	└── Air
 ```
 
 - 稳定存在且需要 Inspector 配置的实体、组件、行为、状态、碰撞体和对象池写入 `.tscn`；
@@ -46,13 +45,21 @@ Player (CharacterBody2D)       # Entity：可复用玩家场景
 
 ## 安装
 
-把整个目录复制到：
+只需把整个插件目录复制到：
 
 ```text
 res://addons/uframe/
 ```
 
-然后在 **项目设置 → 插件** 中启用 UFrame。若宿主已经拥有其他路径的同名 `UFrame` Autoload，插件会警告且不会覆盖或删除它。
+然后在 **项目设置 → 插件** 中启用 UFrame，不需要手动创建节点、Autoload 或项目设置，也不需要重启编辑器。首次启用会自动：
+
+1. 注册唯一的 `UFrame` Autoload；
+2. 在 **项目设置 → UFrame** 中补齐模块开关和日志设置；
+3. 保留宿主项目已经存在的全部 UFrame 设置，不用默认值覆盖开发者选择。
+
+编辑器关闭、重启或插件脚本重载不会撤销这些配置。只有开发者在插件面板中明确禁用 UFrame 时，插件才移除仍指向自身运行时脚本的 `UFrame` Autoload；模块设置会保留，方便之后重新启用。
+
+若宿主已经拥有其他路径的同名 `UFrame` Autoload，插件会给出警告，并且在启用、禁用和重启过程中都不会覆盖或删除它。卸载文件前应先在插件面板中禁用 UFrame。
 
 ## 可选模块
 
@@ -65,14 +72,16 @@ res://addons/uframe/
 | audio | 开 | `UFrame.audio` | BGM 与非空间音效播放器复用 |
 | scene | 开 | `UFrame.scenes` | 主场景和叠加场景生命周期 |
 | transition | 开 | `UFrame.transitions` | 全屏淡入淡出；加载委托给 SceneService |
-| input | 关 | `UFrame.input` | 短时输入缓冲与全局输入锁 |
+| input | 关 | `UFrame.input` | 短时输入缓冲与本服务查询层锁定 |
 | camera | 关 | `UFrame.camera` | Camera2D trauma 震动合成 |
+
+表中是插件首次补充设置时的默认值。Transition 的场景切换功能依赖 Scene 模块，单独的遮罩淡入淡出不依赖场景加载。
 
 禁用模块时对应字段为 `null`：
 
 ```gdscript
 if UFrame.camera:
-    UFrame.camera.add_trauma(0.2)
+	UFrame.camera.add_trauma(0.2)
 ```
 
 ### 场景切换与过渡
@@ -82,7 +91,7 @@ if UFrame.camera:
 ```gdscript
 var error := await UFrame.scenes.change_scene_confirmed("res://levels/level_01.tscn")
 if error != OK:
-    push_error("场景切换失败：%d" % error)
+	push_error("场景切换失败：%d" % error)
 ```
 
 需要黑幕淡入淡出时直接使用过渡服务。即使加载失败或超时，遮罩也会恢复透明：
@@ -101,7 +110,7 @@ var succeeded := await UFrame.transitions.change_scene("res://levels/level_01.ts
 Player (CharacterBody2D)
 ├── HealthComponent       # 脚本类 UFrameHealth
 └── HurtboxComponent      # 脚本类 UFrameHurtbox2D
-    └── CollisionShape2D
+	└── CollisionShape2D
 ```
 
 `UFrameHealth.take_damage()` 返回实际扣除量。`UFrameHurtbox2D` 只有在伤害真正生效后才确认命中；高频反馈监听本地 signal，不会强制广播到全局 EventBus：
@@ -118,12 +127,12 @@ $HealthComponent.damaged.connect(_on_damaged)
 ```gdscript
 var bullet := $BulletPool.acquire()
 if bullet:
-    bullet.launch(global_position, direction, self)
+	bullet.launch(global_position, direction, self)
 
 $BulletPool.release(bullet)
 ```
 
-`UFramePool` 会拒绝重复归还和外部对象，并清理被外部释放的实例。归还时只将场景根节点设为 `PROCESS_MODE_DISABLED` 并隐藏；使用 Godot 默认配置时，后代碰撞对象会通过 `DISABLE_MODE_REMOVE` 自动退出物理模拟，取出时自动恢复，不需要改写碰撞层、遮罩或 Area 配置。
+`UFramePool` 会拒绝重复归还和外部对象，并清理被外部释放的实例。归还时只将场景根节点设为 `PROCESS_MODE_DISABLED` 并隐藏；使用 Godot 默认配置时，后代碰撞对象会通过 `DISABLE_MODE_REMOVE` 自动退出物理模拟，取出时自动恢复，不需要改写碰撞层、遮罩或 Area 配置。创建、取出、归还钩子与对应信号都是同步生命周期事务；事务结束前不能再次修改同一个 Pool，需要继续 `acquire()`、`release()` 或 `clear()` 时应使用 `call_deferred()`。
 
 池化场景的根节点和后代应保留默认的 `Process Mode = Inherit`，`CollisionObject2D/3D` 应保留默认的 `Disable Mode = Remove`。含有画面内容时，场景根节点应为 `CanvasItem`（例如 `Node2D`、`Control`）或 `Node3D`，这样根节点隐藏会自然作用于可视后代。需要停止音频、计时器、粒子或重置游戏数据时，实现 `_on_pool_acquire()` 与 `_on_pool_release()`。
 
@@ -152,35 +161,25 @@ inventory.split_half(8, 9)
 inventory.sort_and_merge()
 ```
 
-缩容、降低堆叠上限、读档与整理都采用事务规则：成功时完整提交，可能丢物时返回失败并保持原内容。`get_count()` 使用缓存；一次批量消耗只发送一次整体变化信号。
+缩容、降低堆叠上限和整理会先检查现有内容能否安全容纳；检测到丢物风险时拒绝修改。`set_slots()` 会验证容量内的保存条目后整体替换，`get_count()` 使用缓存；一次批量消耗只发送一次整体变化信号。
 
-示例中的 `LootDemoItemData` 是静态物品 Resource，`InventorySlotButton` 是格子 View；二者都不保存背包内容或移动规则，因此不是第二套 Inventory 实现。
-
-### 纯规则模型与 View：蜘蛛纸牌示例
-
-蜘蛛纸牌展示了另一种常见边界：规则很多，但不应该为了显示 104 张牌而复制 104 份规则。
-
-- 示例可在场景内选择单色、双色或四色，三档都使用标准的 104 张牌；开局固定 10 列，牌库可以再向每列发牌 5 次；
-- 规则模型独立判断跨花色的单张接龙、同花色连续牌组拖拽、右键自动落牌的“同花色 → 异花色 → 空列”优先级、发牌限制、同花色 `K → A` 自动收组、8 组胜利与撤销恢复；
-- 规则模型不引用 Label、Control、Tween 或粒子，因此可以用纯数据测试每一种移动；
-- `spider_demo.tscn` 中直接存在三档难度按钮、固定的 10 个列挂载点，以及 Completed、牌库 HUD、CardLayer、DragLayer 和 FeedbackOverlay；这些稳定结构能在编辑器里直接查看；
-- 洗牌后每张牌的身份、花色与位置才确定，因此 104 个 Card View 从一个 PackedScene 模板运行时实例化；View 只读取规则结果并显示花色，不自行决定一次移动是否合法；
-- 撤销保存的是一次操作前的牌局快照，所以移动附带的翻牌、发牌和自动收组能作为一个整体恢复；
-- 集中的 FeedbackOverlay 按需绘制有数量上限的蛛丝、光环和粒子，没有效果时停止 `_process()`；每张 Card View 都没有常驻 `_process()`。
-- 合法移动只重排实际改变的两列；被覆盖卡牌只绘制顶部条，发牌共享一个入场调度 Tween，翻牌使用节点变换而不是逐帧重建牌面几何。
-
-这里的重点不是把所有节点都静态写死，而是区分两类内容：固定结构写入场景，数量或身份由运行时决定的重复 View 从模板生成。这样既保留可读的场景树，也不会为了“看得见”而堆出数百份重复配置。
+宿主项目可以另外创建静态物品 Resource 和格子 View；它们只负责内容定义与显示，不保存背包内容或移动规则，因此不会形成第二套 Inventory。
 
 ### 状态机与行为
 
-- `UFrameStateMachine` + `UFrameState`：唯一节点式状态机；直接挂在实体下，状态作为它的子节点。状态机先收集全部状态，再注入状态机与实体并调用一次 `on_setup()`，适合缓存强类型引用或校验长期依赖；`on_enter()` 仍在每次进入状态时执行。状态机自动转发普通帧与物理帧更新，每个状态只需覆写需要的回调。使用 `connect_state_changed()` 连接状态回调，无论连接发生在初始化前后都会同步到初始状态。平台示例的 Idle、Run、Air 共享 `PlatformerState` 基类，分别真正执行移动、跳跃和重力逻辑，而不是空标签。
+- `UFrameStateMachine` + `UFrameState`：唯一节点式状态机；直接挂在实体下，状态作为它的子节点。状态机先收集全部状态，再注入状态机与实体并调用一次 `on_setup()`，适合缓存强类型引用或校验长期依赖；`on_enter()` 仍在每次进入状态时执行。状态机自动转发普通帧与物理帧更新，每个状态只需覆写需要的回调。使用 `connect_state_changed()` 连接状态回调，无论连接发生在初始化前后都会同步到初始状态。
 - `UFrameBehaviorManager` + `UFrameBehavior`：Manager 直接挂在实体下，Behavior 只放在 Manager 下，节点名就是查询 ID。Manager 不进入逐帧循环，只负责整理层级、注入实体引用和统一启停；行为只需覆写需要的回调，禁用后停止两种帧更新。
 
 ```gdscript
 var movement := $BehaviorManager.get_behavior(&"Movement")
 $BehaviorManager.set_behavior_enabled(&"Movement", false)
 ```
-- `UFrameStats` + `UFrameStatModifier`：按属性缓存计算结果，限时修改器激活时才进入帧循环。
+- `UFrameStats` + `UFrameStatModifier`：按属性缓存计算结果；运行期加入限时修改器后按需进入帧循环。单项变化使用 `add_modifier()` / `remove_modifier()`；初始化装备、读档或同帧到期等集中变化使用 `add_modifiers()` / `remove_modifiers()`，每个受影响属性只排序、重算并发送一次 `stat_changed`。同一个 Modifier Resource 实例不能重复加入，需要独立层数时应为每层创建或复制独立实例。修正生效期间视为不可变；需要修改字段时先移除、修改，再重新加入。生命周期或 `stat_changed` 监听器若要继续增删同一个 Stats，应使用 `call_deferred()`。
+
+```gdscript
+var modifiers: Array[UFrameStatModifier] = [weapon_modifier, buff_modifier]
+var added_count := $Stats.add_modifiers(modifiers)
+```
 
 ## 数据 Resource
 
@@ -194,27 +193,28 @@ $BehaviorManager.set_behavior_enabled(&"Movement", false)
 var result := loot_table.roll(miss_count)
 miss_count = result.miss_count
 if result.count > 0:
-    inventory.add_item(result.content_id, result.count)
+	inventory.add_item(result.content_id, result.count)
 ```
 
 这样多个敌人、玩家或掉落来源可以共享一张表，却各自拥有独立保底进度。
 
 ## 性能约束
 
-- 无敌计时、输入缓冲、限时属性与相机震动只在激活期间进入帧循环。
+- 无敌计时、输入缓冲和相机震动只在激活期间进入帧循环；运行期加入限时属性后才启用 Stats 计时，批量修正按属性合并排序、重算和变化通知。
 - 高频战斗使用局部 signal；`UFrame.events` 只用于关卡完成等低频跨系统消息。
-- 对象池的计数查询为 O(1)，普通空闲复用不扫描全池；只有真正触顶时才清理失效引用并回收最早活跃实例。
+- 对象池的计数查询为 O(1)，普通空闲复用和正常满载溢出都不扫描全池；满载时直接回收最早活跃实例，只有内部容量账本出现矛盾时才执行完整修复扫描。
 - 对象池不会自动猜测业务状态，实例自行实现池生命周期钩子；`Maximum Size = 0` 关闭容量回收，正数触顶时使用固定的最早实例回收规则。
-- Registry 只保存引用，不扫描场景树；目录扫描只在显式调用时执行。
-- UI、图标、粒子和玩法逻辑全部留在示例或宿主项目中，插件运行时不会加载它们。
+- Registry 只保存调用方注册的非空值，不扫描场景树；目录扫描只在显式调用时执行。
+- UI、图标、粒子和玩法逻辑全部留在宿主项目中，插件运行时不会加载它们。
 
-## 验证
+## 安装验证
 
-```powershell
-Godot_v4.7-stable_win64_console.exe --headless --path <project> res://tests/test_runner.tscn
-Godot_v4.7-stable_win64_console.exe --headless --path <project> res://tests/scene_transition_source.tscn
-Godot_v4.7-stable_win64_console.exe --headless --path <project> res://tests/scene_transition_source.tscn -- --async
-Godot_v4.7-stable_win64_console.exe --headless --path <project> res://tests/scene_transition_source.tscn -- --spider
+启用后可在任意场景脚本中进行最小检查：
+
+```gdscript
+func _ready() -> void:
+	assert(UFrame.events != null)
+	assert(UFrame.is_module_enabled("registry") == (UFrame.registry != null))
 ```
 
-测试覆盖事件递归、背包事务、独立保底、阵营伤害过滤、组合实体后代碰撞、对象池失效实例、相机重绑定、真实场景过渡、输入缓冲、行为生命周期、音量更新、存档恢复，以及四个示例的场景组件结构。
+同时确认 **项目设置 → 自动加载** 中只有一个 `UFrame`，并在 **项目设置 → UFrame** 中按当前项目需要关闭不使用的模块。宿主项目若提供自动化测试，应把实际启用组合、场景切换、存档和池化生命周期纳入自己的回归入口。

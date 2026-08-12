@@ -1,10 +1,15 @@
 extends Control
 
-## UFrame 示例启动器。每张卡片都说明玩法、操作和正在展示的公共模块。
+## UFrame 示例启动器。
+##
+## 固定页头、滚动容器和页脚保存在 example_browser.tscn；本脚本只根据轻量数据
+## 创建四张同构入口卡片，并负责快捷键与场景切换。
 
+#region 示例配置
 const UI := preload("res://examples/common/example_ui.gd")
-const CardScene := preload("res://examples/common/example_card.tscn")
+const CARD_SCENE := preload("res://examples/common/example_card.tscn")
 
+## 每项只保存卡片展示数据和目标场景，不保存玩法运行时状态。
 const EXAMPLES := [
 	{
 		"number": "01",
@@ -51,17 +56,25 @@ const EXAMPLES := [
 		"color": Color("#74f0c1"),
 	},
 ]
+#endregion
 
-var _opening := false
-var _cards: Array[Button] = []
-
+#region 场景引用
 @onready var _cards_container: HBoxContainer = $Content/Column/CardsScroll/CardPadding/Cards
 @onready var _title: Label = $Content/Column/Header/Title
 @onready var _version: Label = $Content/Column/Header/Version
 @onready var _subtitle: Label = $Content/Column/Subtitle
 @onready var _footer_hint: Label = $Content/Column/Footer/Hint
 @onready var _footer_note: Label = $Content/Column/Footer/Note
+#endregion
 
+#region 运行时状态
+## 已经发起场景切换后保持 true，防止重复点击或快捷键重入。
+var _opening := false
+## 当前四张入口卡片，用于设置初始焦点和切换时统一禁用。
+var _cards: Array[Button] = []
+#endregion
+
+#region 生命周期与输入
 func _ready() -> void:
 	_style_static_interface()
 	# 四张同构卡片来自数据数组，属于合理的重复运行时内容；
@@ -84,7 +97,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if index >= 0:
 		_open_example(EXAMPLES[index].scene)
 		get_viewport().set_input_as_handled()
+#endregion
 
+#region 界面装配
 func _style_static_interface() -> void:
 	UI.style_label(_title, 34)
 	_version.text = "UFRAME %s  ·  GODOT 4.7" % UFrame.VERSION
@@ -93,13 +108,16 @@ func _style_static_interface() -> void:
 	UI.style_label(_footer_hint, 14, UI.MUTED.lightened(0.14))
 	UI.style_label(_footer_note, 13, Color("#8da4ff"))
 
+## 从共享模板创建一张入口卡片，并把点击意图连接到目标场景。
 func _create_example_card(example: Dictionary) -> Button:
-	var card := CardScene.instantiate() as Button
+	var card := CARD_SCENE.instantiate() as Button
 	card.call("configure", example)
 	card.pressed.connect(func() -> void: _open_example(example.scene))
 	_cards.append(card)
 	return card
+#endregion
 
+#region 场景切换
 func _open_example(scene_path: String) -> void:
 	if _opening:
 		return
@@ -109,3 +127,4 @@ func _open_example(scene_path: String) -> void:
 	if UFrame.transitions and await UFrame.transitions.change_scene(scene_path, 0.16):
 		return
 	get_tree().change_scene_to_file(scene_path)
+#endregion

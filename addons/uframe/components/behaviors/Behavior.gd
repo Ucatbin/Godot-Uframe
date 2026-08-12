@@ -1,14 +1,15 @@
 extends Node
 
-## 可组合实体行为基类
+## 可并行启停的实体行为基类。
 ##
-## 必须作为 [UFrameBehaviorManager] 的直属子节点使用[br]
-## 具体行为继承本类后，只需覆写需要的生命周期和帧更新回调
+## 负责接收 [UFrameBehaviorManager] 注入的实体依赖，并把 Godot 帧回调转发给已进入的行为。
+## 不负责行为之间的互斥切换；互斥玩法逻辑应使用 [UFrameStateMachine]。
+## 打开 [code]examples/arena/arena_player.tscn[/code] 可查看 Behavior 在实体场景中的静态组合。
 class_name UFrameBehavior
 
-#region 配置
-## [b]是否启用[/b][br]
-## 运行时修改会自动进入或退出行为，并同步帧处理状态
+#region Inspector 配置
+## 是否启用行为。
+## 运行时修改会自动进入或退出行为，并同步帧处理状态。
 @export var enabled := true:
 	set(value):
 		if enabled == value:
@@ -29,39 +30,33 @@ class_name UFrameBehavior
 		_sync_processing()
 #endregion
 
-#region 运行时状态
-## [b]管理器引用[/b][br]
-## 由 [UFrameBehaviorManager] 自动注入
+#region 依赖引用
+## 所属行为管理器，由 [UFrameBehaviorManager] 自动注入。
 var manager: UFrameBehaviorManager = null
 
-## [b]所属实体[/b][br]
-## 管理器的父节点，通常是玩家或敌人实体；由 [UFrameBehaviorManager] 自动注入
+## 所属实体，即管理器的父节点；由 [UFrameBehaviorManager] 自动注入。
 var entity: Node = null
+#endregion
 
-## [b]行为进入状态[/b][br]
-## 用于保证 [method on_enter] 与 [method on_exit] 成对执行
+#region 运行时状态
+## 行为是否已经进入，用于保证 [method on_enter] 与 [method on_exit] 成对执行。
 var _behavior_entered := false
 #endregion
 
 #region 可覆写回调
-## [b]进入行为[/b]
+## 行为启用且所属实体 ready 后调用。
 func on_enter() -> void:
 	pass
 
-## [b]退出行为[/b][br]
-## 禁用行为或离开场景树时调用
+## 禁用行为或离开场景树时调用。
 func on_exit() -> void:
 	pass
 
-## [b]更新普通帧[/b][br]
-## 仅在行为进入后执行[br][br]
-## [param _delta] : 帧间隔
+## 行为进入后由普通帧回调转发。[param _delta] 是当前帧间隔。
 func on_update(_delta: float) -> void:
 	pass
 
-## [b]更新物理帧[/b][br]
-## 仅在行为进入后执行[br][br]
-## [param _delta] : 帧间隔
+## 行为进入后由物理帧回调转发。[param _delta] 是当前物理帧间隔。
 func on_physics_update(_delta: float) -> void:
 	pass
 #endregion
@@ -93,48 +88,42 @@ func _physics_process(delta: float) -> void:
 	on_physics_update(delta)
 #endregion
 
-#region 主要方法
-## [b]设置启用状态[/b][br][br]
-## [param value] : 是否启用行为
+#region 行为控制
+## 设置行为是否启用；节点就绪后会同步进入或退出生命周期。
+## [param value] 表示新的启用状态。
 func set_enabled(value: bool) -> void:
 	enabled = value
 #endregion
 
-#region 内部方法
-## [b]进入行为生命周期[/b][br]
-## 已经进入时不重复执行
+#region 生命周期控制
+## 进入行为生命周期；已经进入时不会重复调用 [method on_enter]。
 func _enter_behavior() -> void:
 	if _behavior_entered:
 		return
 	_behavior_entered = true
 	on_enter()
 
-## [b]退出行为生命周期[/b][br]
-## 尚未进入时不执行
+## 退出行为生命周期；尚未进入时不会调用 [method on_exit]。
 func _exit_behavior() -> void:
 	if not _behavior_entered:
 		return
 	_behavior_entered = false
 	on_exit()
 
-## [b]同步帧处理状态[/b][br]
-## 仅在行为已经进入时启用普通帧和物理帧回调
+## 根据行为是否已经进入，同步普通帧与物理帧处理状态。
 func _sync_processing() -> void:
 	set_process(_behavior_entered)
 	set_physics_process(_behavior_entered)
 
-## [b]绑定行为管理器[/b][br]
-## 由 [UFrameBehaviorManager] 为直属子节点调用[br][br]
-## [param new_manager] : 所属行为管理器[br]
-## [param new_entity] : 管理器所属实体
+## 由 [UFrameBehaviorManager] 为直属子节点注入管理器和实体。
+## [param new_manager] 是所属管理器，[param new_entity] 是管理器所属实体。
 func _bind_to_manager(new_manager: UFrameBehaviorManager, new_entity: Node) -> void:
 	manager = new_manager
 	entity = new_entity
 	if is_node_ready() and is_inside_tree():
 		_activate_when_entity_is_ready()
 
-## [b]等待实体就绪并激活[/b][br]
-## 等待期间绑定关系发生变化时取消本次激活
+## 等待实体 ready 后激活行为；等待期间绑定关系变化时取消本次激活。
 func _activate_when_entity_is_ready() -> void:
 	var expected_manager := manager
 	var expected_entity := entity

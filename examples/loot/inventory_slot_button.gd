@@ -1,27 +1,39 @@
-class_name InventorySlotButton
 extends Button
 
 ## 背包示例的可拖拽格子视图。
 ##
 ## 这个脚本随 inventory_slot_button.tscn 一起复用，只负责显示物品和转发手势；
 ## 数量、移动、合并等规则仍全部位于场景树中的 UFrameInventory 组件。
+class_name InventorySlotButton
 
+#region 常量与信号
 const UI := preload("res://examples/common/example_ui.gd")
 
+## 右键请求拿取或放下一份物品；[param half] 表示是否按住 Ctrl 取一半。
 signal right_clicked(index: int, half: bool)
+## 拖拽移动成功后发出，让控制器显示操作结果。
 signal item_dropped(from_index: int, to_index: int)
+## 鼠标进入格子时发出，让控制器刷新详情面板。
 signal slot_hovered(index: int)
+#endregion
 
+#region 依赖与状态
+## 由 LootDemo 创建格子时注入；View 只调用公开背包 API，不复制背包规则。
 var inventory: UFrameInventory
+## 本 View 对应的背包格子索引，由 LootDemo 注入。
 var slot_index := -1
+## 当前格子的显示快照；背包组件仍是内容的唯一数据源。
 var _entry: Dictionary = {}
 var _title := ""
 var _description := ""
 var _icon_kind := &""
 var _item_color := Color("#42526a")
 var _stack_limit := 1
+## 0 表示无拖放提示，1 表示合法目标，-1 表示非法目标。
 var _drop_hint := 0
+#endregion
 
+#region 生命周期
 func _ready() -> void:
 	focus_mode = Control.FOCUS_NONE
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -35,9 +47,11 @@ func _ready() -> void:
 	)
 	mouse_entered.connect(func() -> void: slot_hovered.emit(slot_index))
 	resized.connect(func() -> void: pivot_offset = size * 0.5)
+#endregion
 
+#region 显示同步
 ## 更新格子显示。空 Dictionary 会恢复为空格外观。
-func set_entry(entry: Dictionary, data: LootDemoItemData = null, stack_limit := 1) -> void:
+func set_entry(entry: Dictionary, data: LootDemoItemData = null, stack_limit: int = 1) -> void:
 	_entry = entry.duplicate()
 	_stack_limit = stack_limit
 	if entry.is_empty() or data == null:
@@ -53,7 +67,9 @@ func set_entry(entry: Dictionary, data: LootDemoItemData = null, stack_limit := 
 		_item_color = data.display_color
 		tooltip_text = "%s × %d / %d\n%s" % [_title, entry.count, _stack_limit, _description]
 	queue_redraw()
+#endregion
 
+#region 拖放交互
 func _get_drag_data(_position: Vector2) -> Variant:
 	if inventory == null or inventory.is_slot_empty(slot_index):
 		return null
@@ -92,13 +108,17 @@ func _notification(what: int) -> void:
 		modulate.a = 1.0
 		_drop_hint = 0
 		queue_redraw()
+#endregion
 
+#region 输入
 func _on_gui_input(event: InputEvent) -> void:
 	var mouse := event as InputEventMouseButton
 	if mouse and mouse.pressed and mouse.button_index == MOUSE_BUTTON_RIGHT:
 		right_clicked.emit(slot_index, Input.is_key_pressed(KEY_CTRL))
 		accept_event()
+#endregion
 
+#region 程序化绘制
 func _draw() -> void:
 	if _drop_hint != 0:
 		var hint_color := Color("#66d9a0") if _drop_hint > 0 else Color("#ff6b7a")
@@ -147,3 +167,4 @@ func _draw_item_icon(center: Vector2) -> void:
 		_:
 			draw_rect(Rect2(center - Vector2(10, 10), Vector2(20, 20)), dark, true)
 			draw_rect(Rect2(center - Vector2(8, 8), Vector2(16, 16)), _item_color, true)
+#endregion

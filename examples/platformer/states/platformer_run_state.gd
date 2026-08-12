@@ -1,10 +1,12 @@
-extends Platformer_Base_State
+extends PlatformerBaseState
 
-## 平台跳跃奔跑状态
+## 平台跳跃奔跑状态。
 ##
-## 负责玩家在地面加速、根据实际位移生成脚步反馈，以及切换到 Idle / Air 状态
+## 负责玩家在地面加速、根据实际位移生成脚步反馈，以及切换到 Idle / Air 状态。
+## 本节点作为 StateMachine 的直属子节点保存在 platformer_player.tscn 中。
 
 #region 状态回调
+## 在地面加速并处理跳跃、离地或停止移动的转换。
 func on_physics_update(delta: float) -> void:
 	if player == null:
 		return

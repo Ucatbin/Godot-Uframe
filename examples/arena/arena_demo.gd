@@ -5,15 +5,20 @@ extends Node2D
 ## 打开 arena_demo.tscn 即可看到玩家实体、三个对象池、相机和完整 HUD。
 ## 本脚本只负责游戏流程编排；实体由 .tscn 定义，组件不在代码中动态创建。
 
+#region 配置
 const UI := preload("res://examples/common/example_ui.gd")
 const MENU_SCENE := "res://examples/example_browser.tscn"
+#endregion
 
+#region 场景引用
+## 场景中固定存在的玩家、对象池和关卡相机。
 @onready var player: ArenaPlayer = $World/Player
 @onready var enemy_pool: UFramePool = $World/EnemyPool
 @onready var bullet_pool: UFramePool = $World/BulletPool
 @onready var effect_pool: UFramePool = $World/EffectPool
 @onready var camera: Camera2D = $MainCamera
 
+## 场景中固定存在的 HUD 显示挂点。
 @onready var main_panel: PanelContainer = $HUD/TopMargin/TopRow/MainPanel
 @onready var stats_panel: PanelContainer = $HUD/TopMargin/TopRow/StatsPanel
 @onready var title_label: Label = $HUD/TopMargin/TopRow/MainPanel/MainColumn/Heading/Title
@@ -25,17 +30,26 @@ const MENU_SCENE := "res://examples/example_browser.tscn"
 @onready var runtime_label: Label = $HUD/TopMargin/TopRow/StatsPanel/StatsColumn/RuntimeLabel
 @onready var message_panel: PanelContainer = $HUD/MessagePanel
 @onready var message_label: Label = $HUD/MessagePanel/MessageLabel
+#endregion
 
+#region 运行时状态
+## 当前仍在场内活动的敌人引用；外部释放的失效项会按需清理。
 var enemies: Array[ArenaEnemy] = []
+## 本轮击败数和累计生存时间。
 var score := 0
 var elapsed := 0.0
+## 敌人生成与自动射击的剩余间隔。
 var spawn_timer := 0.0
 var shoot_timer := 0.0
+## 可被同类新反馈替换的镜头和消息 Tween。
 var camera_tween: Tween
 var message_tween: Tween
+## 回合结束与场景切换重入保护。
 var _ended := false
 var _changing_scene := false
+#endregion
 
+#region 生命周期
 func _ready() -> void:
 	_style_hud()
 	var movement := player.behaviors.get_behavior(&"Movement") as ArenaPlayerMovementBehavior
@@ -70,21 +84,9 @@ func _process(delta: float) -> void:
 	var look_ahead := player.velocity * 0.040
 	var follow_weight := 1.0 - exp(-8.5 * delta)
 	camera.position = camera.position.lerp(get_viewport_rect().size * 0.5 + look_ahead, follow_weight)
+#endregion
 
-func _draw() -> void:
-	var size := get_viewport_rect().size
-	var overscan := 110.0
-	draw_rect(Rect2(Vector2(-overscan, -overscan), size + Vector2.ONE * overscan * 2.0), Color("#0b111c"))
-	var grid_color := Color(Color("#233044"), 0.55)
-	for x in range(-96, int(size.x) + 144, 48):
-		draw_line(Vector2(x, -overscan), Vector2(x, size.y + overscan), grid_color, 1.0)
-	for y in range(-96, int(size.y) + 144, 48):
-		draw_line(Vector2(-overscan, y), Vector2(size.x + overscan, y), grid_color, 1.0)
-	var center := size * 0.5
-	draw_circle(center, 215.0, Color(Color("#5ca8ff"), 0.025))
-	draw_arc(center, 215.0, 0.0, TAU, 72, Color(Color("#5ca8ff"), 0.12), 2.0)
-	draw_arc(center, 118.0, 0.0, TAU, 48, Color(Color("#ff6b7a"), 0.08), 1.0)
-
+#region 对象池装配
 ## 三个池的 instance_created 信号在场景中连接，因此预热实例也只绑定一次信号。
 func _on_enemy_pool_instance_created(instance: Node) -> void:
 	var enemy := instance as ArenaEnemy
@@ -98,7 +100,9 @@ func _on_bullet_pool_instance_created(instance: Node) -> void:
 	var callback := _on_bullet_hit.bind(bullet)
 	if not bullet.hit_confirmed.is_connected(callback):
 		bullet.hit_confirmed.connect(callback)
+#endregion
 
+#region 生成与射击
 func _spawn_enemy() -> void:
 	_prune_enemies()
 	if enemies.size() >= 40 or not is_instance_valid(player):
@@ -139,7 +143,9 @@ func _shoot_nearest() -> void:
 	_spawn_burst(muzzle_position, Color("#ffca70"), direction, 6, 78.0, 24.0, player.velocity * 0.12)
 	if UFrame.camera:
 		UFrame.camera.add_trauma(0.012)
+#endregion
 
+#region 战斗回调
 func _on_bullet_hit(target: Node, applied_damage: int, bullet: ArenaBullet) -> void:
 	var enemy := target.get_parent() as ArenaEnemy
 	if enemy:
@@ -186,7 +192,43 @@ func _on_player_died(_source: Node) -> void:
 		UFrame.camera.add_trauma(0.65)
 	await get_tree().create_timer(0.85).timeout
 	get_tree().reload_current_scene()
+#endregion
 
+#region 引用维护
+## 清除已经被外部释放或排队删除的敌人引用，避免自动瞄准访问失效节点。
+func _prune_enemies() -> void:
+	for index in range(enemies.size() - 1, -1, -1):
+		if not is_instance_valid(enemies[index]) or enemies[index].is_queued_for_deletion():
+			enemies.remove_at(index)
+#endregion
+
+#region 场景切换
+func _return_to_menu() -> void:
+	if _changing_scene:
+		return
+	_changing_scene = true
+	if UFrame.transitions and await UFrame.transitions.change_scene(MENU_SCENE, 0.14):
+		return
+	get_tree().change_scene_to_file(MENU_SCENE)
+#endregion
+
+#region 程序化背景
+func _draw() -> void:
+	var size := get_viewport_rect().size
+	var overscan := 110.0
+	draw_rect(Rect2(Vector2(-overscan, -overscan), size + Vector2.ONE * overscan * 2.0), Color("#0b111c"))
+	var grid_color := Color(Color("#233044"), 0.55)
+	for x in range(-96, int(size.x) + 144, 48):
+		draw_line(Vector2(x, -overscan), Vector2(x, size.y + overscan), grid_color, 1.0)
+	for y in range(-96, int(size.y) + 144, 48):
+		draw_line(Vector2(-overscan, y), Vector2(size.x + overscan, y), grid_color, 1.0)
+	var center := size * 0.5
+	draw_circle(center, 215.0, Color(Color("#5ca8ff"), 0.025))
+	draw_arc(center, 215.0, 0.0, TAU, 72, Color(Color("#5ca8ff"), 0.12), 2.0)
+	draw_arc(center, 118.0, 0.0, TAU, 48, Color(Color("#ff6b7a"), 0.08), 1.0)
+#endregion
+
+#region 视觉反馈
 func _spawn_burst(
 	position: Vector2,
 	color: Color,
@@ -219,7 +261,9 @@ func _show_temporary_message(text: String, duration: float) -> void:
 	message_tween.tween_property(message_panel, "modulate:a", 1.0, 0.16)
 	message_tween.tween_interval(duration)
 	message_tween.tween_property(message_panel, "modulate:a", 0.0, 0.25)
+#endregion
 
+#region HUD
 func _update_hud() -> void:
 	hp_bar.max_value = player.health.max_hp
 	hp_bar.value = player.health.hp
@@ -235,12 +279,9 @@ func _update_hud() -> void:
 		effect_pool.get_active_count(),
 		effect_pool.get_total_count(),
 	]
+#endregion
 
-func _prune_enemies() -> void:
-	for index in range(enemies.size() - 1, -1, -1):
-		if not is_instance_valid(enemies[index]) or enemies[index].is_queued_for_deletion():
-			enemies.remove_at(index)
-
+#region 镜头与界面样式
 func _animate_camera_zoom(target: Vector2, duration: float) -> void:
 	if camera_tween and camera_tween.is_valid():
 		camera_tween.kill()
@@ -262,11 +303,4 @@ func _style_hud() -> void:
 	UI.style_label(runtime_label, 13, UI.MUTED)
 	UI.style_label(message_label, 14, UI.TEXT)
 	message_panel.modulate.a = 0.0
-
-func _return_to_menu() -> void:
-	if _changing_scene:
-		return
-	_changing_scene = true
-	if UFrame.transitions and await UFrame.transitions.change_scene(MENU_SCENE, 0.14):
-		return
-	get_tree().change_scene_to_file(MENU_SCENE)
+#endregion

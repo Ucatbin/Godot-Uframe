@@ -1,20 +1,32 @@
 extends Control
 
-## 启动器卡片内的原生动态预览。只画最小玩法轮廓，不创建子节点或素材。
+## 启动器卡片内的原生动态预览。
+##
+## 本脚本只画最小玩法轮廓，不创建子节点、素材或第二份玩法规则；组合位置见
+## example_card.tscn 的 Preview 挂点。
 
+#region 显示状态
+## 当前预览类型，由入口卡片通过 [method configure] 注入。
 var kind := &"arena"
+## 当前卡片的强调色。
 var accent := Color("#5ca8ff")
 var _time := 0.0
+#endregion
 
+#region 生命周期
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+#endregion
 
+#region 公开接口
 ## 设置预览类型：arena、platformer、inventory 或 spider。
 func configure(preview_kind: StringName, color: Color) -> void:
 	kind = preview_kind
 	accent = color
 	queue_redraw()
+#endregion
 
+#region 动画与分发
 func _process(delta: float) -> void:
 	_time += delta
 	queue_redraw()
@@ -27,7 +39,9 @@ func _draw() -> void:
 		&"platformer": _draw_platformer()
 		&"spider": _draw_spider()
 		_: _draw_inventory()
+#endregion
 
+#region 玩法缩略图
 func _draw_arena() -> void:
 	var center := size * 0.5
 	draw_arc(center, 26.0, 0, TAU, 28, Color(accent, 0.22), 1.0)
@@ -92,7 +106,12 @@ func _draw_spider() -> void:
 	draw_circle(target + card_size * 0.5, 12.0 + sin(_time * 3.0) * 1.5, Color("#ffc857", 0.08))
 	_draw_spider_card(Rect2(moving_position, card_size), true, Color("#ffc857"), 3)
 
-func _draw_spider_card(rect: Rect2, face_up: bool, border := Color.TRANSPARENT, suit := 0) -> void:
+func _draw_spider_card(
+	rect: Rect2,
+	face_up: bool,
+	border: Color = Color.TRANSPARENT,
+	suit: int = 0
+) -> void:
 	draw_rect(Rect2(rect.position + Vector2(1.5, 2.0), rect.size), Color("#000000", 0.22), true)
 	var fill := Color("#f4e6c5") if face_up else Color("#12352f")
 	var outline := border if border.a > 0.0 else Color(accent, 0.72 if face_up else 0.34)
@@ -104,8 +123,6 @@ func _draw_spider_card(rect: Rect2, face_up: bool, border := Color.TRANSPARENT, 
 	else:
 		draw_line(rect.position + Vector2(3.0, 4.0), rect.end - Vector2(3.0, 4.0), Color(accent, 0.24), 1.0)
 		draw_line(Vector2(rect.end.x - 3.0, rect.position.y + 4.0), Vector2(rect.position.x + 3.0, rect.end.y - 4.0), Color(accent, 0.24), 1.0)
-
-
 ## 卡片只有 15×21 像素，使用原生图元代替字体，避免预览依赖额外素材或字号。
 func _draw_spider_suit(center: Vector2, suit: int) -> void:
 	match clampi(suit, 0, 3):
@@ -129,3 +146,4 @@ func _draw_spider_suit(center: Vector2, suit: int) -> void:
 		_: # 方片
 			var color := Color("#c8782e")
 			draw_colored_polygon(PackedVector2Array([center + Vector2(0.0, -3.0), center + Vector2(2.4, 0.0), center + Vector2(0.0, 3.0), center + Vector2(-2.4, 0.0)]), color)
+#endregion

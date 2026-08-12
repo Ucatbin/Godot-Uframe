@@ -1,16 +1,18 @@
-extends Platformer_Base_State
+extends PlatformerBaseState
 
-## 平台跳跃待机状态
+## 平台跳跃待机状态。
 ##
-## 负责玩家在地面待机时减速、响应跳跃，以及切换到 Run / Air 状态
-## 状态节点会直接驱动物理移动，不只是用于标记当前状态
+## 负责玩家在地面待机时减速、响应跳跃，以及切换到 Run / Air 状态。
+## 状态节点会直接驱动物理移动，不只是用于标记当前状态；组合见 platformer_player.tscn。
 
 #region 状态回调
-func on_enter(_data := {}) -> void:
+## 每次进入 Idle 时清除旧脚步距离，避免下次奔跑立即生成粒子。
+func on_enter(_data: Dictionary = {}) -> void:
 	# 清除上一轮奔跑累计的脚步距离
 	if player:
 		player.reset_walk_feedback()
 
+## 在地面减速并处理跳跃、离地或开始奔跑的转换。
 func on_physics_update(delta: float) -> void:
 	if player == null:
 		return

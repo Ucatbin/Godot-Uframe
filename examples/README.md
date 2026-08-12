@@ -2,6 +2,8 @@
 
 运行项目会进入 `example_browser.tscn`。按 `1 / 2 / 3 / 4`、横向滚动卡片或直接点击卡片进入四个示例；示例内按 `Esc` 返回。全部画面由 Godot 原生节点和 Canvas 绘制生成，没有图片、字体、音频或第三方依赖。
 
+> 文档定位：本文件只说明示例入口、操作和当前展示内容。整体职责与依赖见 [ARCHITECTURE.md](../ARCHITECTURE.md)，插件公共用法见 [插件 README](../addons/uframe/README.md)。
+
 ## 应该怎样阅读这些示例
 
 示例遵循“场景树就是架构说明”的原则：

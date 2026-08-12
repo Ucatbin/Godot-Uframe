@@ -1,15 +1,18 @@
-extends Platformer_Base_State
+extends PlatformerBaseState
 
-## 平台跳跃空中状态
+## 平台跳跃空中状态。
 ##
-## 负责玩家的空中操控、土狼跳、可变跳高、重力、落地反馈与状态切换
+## 负责玩家的空中操控、土狼跳、可变跳高、重力、落地反馈与状态切换。
+## 本节点作为 StateMachine 的直属子节点保存在 platformer_player.tscn 中。
 
 #region 状态回调
-func on_enter(_data := {}) -> void:
+## 每次进入 Air 时清除旧脚步距离，避免落地后继承奔跑反馈。
+func on_enter(_data: Dictionary = {}) -> void:
 	# 清除上一轮奔跑累计的脚步距离
 	if player:
 		player.reset_walk_feedback()
 
+## 处理空中加速、可变跳高、重力和真实落地后的状态转换。
 func on_physics_update(delta: float) -> void:
 	if player == null:
 		return

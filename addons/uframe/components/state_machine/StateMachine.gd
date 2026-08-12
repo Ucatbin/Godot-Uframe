@@ -1,39 +1,37 @@
-class_name UFrameStateMachine
 extends Node
 
-## 节点式有限状态机组件
+## 节点式有限状态机组件。
 ##
-## 将多个 [UFrameState] 作为直属子节点，并设置 [member initial_state][br]
-## 状态机会向当前状态转发普通帧和物理帧更新，状态只需覆写需要的回调
+## 负责收集直属 [UFrameState]、注入实体依赖、执行互斥切换，并转发普通帧与物理帧更新。
+## 不动态发现非直属状态，也不规定具体玩法数据；状态结构应稳定写入实体场景。
+## 打开 [code]examples/platformer/platformer_player.tscn[/code] 可查看完整状态机组合。
+class_name UFrameStateMachine
 
 #region 信号
-## 状态切换完成[br]
-## 新状态的 [method UFrameState.on_enter] 执行后发出[br][br]
-## 推荐使用 [method connect_state_changed] 订阅，避免晚于初始化连接时漏掉初始状态[br][br]
-## [param previous] : 上一个状态名[br]
-## [param current] : 当前状态名
+## 新状态的 [method UFrameState.on_enter] 执行完成后发出。
+## [param previous] 是上一个状态名，[param current] 是当前状态名。
+## 推荐使用 [method connect_state_changed] 订阅，避免初始化后连接时漏掉初始状态。
 signal state_changed(previous: StringName, current: StringName)
 #endregion
 
-#region 配置
-## 初始状态名[br]
-## 必须在初始化前设置，并对应一个直属 [UFrameState] 子节点
+#region Inspector 配置
+## 初始状态名；必须在初始化前设置，并对应一个直属 [UFrameState] 子节点。
 @export var initial_state: StringName
 #endregion
 
 #region 运行时状态
-## 当前正在运行的状态[br]
+## 当前正在运行的状态；初始化失败时为 [code]null[/code]。
 var current_state: UFrameState = null
 
-## 状态表[br][br]
-## 状态名 -> [UFrameState]
+## 状态名到直属 [UFrameState] 的一次性映射。
 var _states: Dictionary[StringName, UFrameState] = {}
 #endregion
 
 #region 生命周期
+## 收集全部直属状态、统一注入依赖，再进入 [member initial_state]。
 func _ready() -> void:
 	if initial_state.is_empty():
-		push_error("未设置初始状态")
+		push_error("[UFrameStateMachine] 未设置 initial_state")
 		return
 	# 先收集完整状态表，保证任何状态在 on_setup() 中都能查询其他状态
 	var states_to_setup: Array[UFrameState] = []
@@ -57,12 +55,10 @@ func _physics_process(delta: float) -> void:
 		current_state.on_physics_update(delta)
 #endregion
 
-#region 主要方法
-## 切换当前状态[br]
-## 目标不存在或已经是当前状态时保持不变[br][br]
-## [param state_name] : 目标状态名[br]
-## [param data] : 传递给 [method UFrameState.on_enter] 的数据
-func change_state(state_name: StringName, data := {}) -> void:
+#region 状态切换
+## 切换到 [param state_name]，并把状态切换数据字典 [param data] 传给新状态。
+## 目标不存在或已经是当前状态时保持不变。
+func change_state(state_name: StringName, data: Dictionary = {}) -> void:
 	if not _states.has(state_name):
 		push_error("[UFrameStateMachine] 找不到状态：%s" % state_name)
 		return
@@ -76,10 +72,8 @@ func change_state(state_name: StringName, data := {}) -> void:
 	current_state.on_enter(data)
 	state_changed.emit(previous_state, StringName(state_name))
 
-## 连接状态变化回调，并同步状态[br]
-## 防止初始状态切换信号无法正确送达，初始化后连接时，会立即回调一次空状态到当前状态[br]
-## 重复连接同一回调时不会重复连接或再次同步[br][br]
-## [param callback] : 接收 [code]previous[/code] 和 [code]current[/code] 两个状态名
+## 连接接收 [code]previous[/code] 与 [code]current[/code] 的状态变化 [param callback]。
+## 初始化后连接时会立即同步一次“空状态 → 当前状态”；重复连接不会再次同步。
 func connect_state_changed(callback: Callable) -> void:
 	if not callback.is_valid():
 		push_error("[UFrameStateMachine] 状态回调无效")
@@ -91,13 +85,12 @@ func connect_state_changed(callback: Callable) -> void:
 		callback.call(StringName(), get_current_state_name())
 #endregion
 
-#region 查询方法
-## 获取当前状态名；没有激活状态时返回空 [StringName]
+#region 状态查询
+## 获取当前状态名；没有激活状态时返回空 [StringName]。
 func get_current_state_name() -> StringName:
 	return current_state.state_name if current_state else StringName()
 
-## 判断当前状态[br][br]
-## [param state_name] : 需要检查的状态名
+## 判断当前状态是否为 [param state_name]。
 func is_in_state(state_name: StringName) -> bool:
 	return current_state and current_state.state_name == state_name
 #endregion

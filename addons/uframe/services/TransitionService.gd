@@ -2,45 +2,44 @@ extends Node
 
 ## 可选全屏画面过渡服务
 ##
-## 通过 [code]UFrame.transitions[/code] 使用，只负责全屏遮罩与过渡流程[br]
-## 场景加载统一委托给 [UFrameSceneService]，不维护第二套加载状态
+## 通过 [code]UFrame.transitions[/code] 使用，只负责全屏遮罩与过渡流程。
+## 本服务不维护第二套加载状态，场景加载统一委托给 [UFrameSceneService]。
 class_name UFrameTransition
 
 #region 信号
-## [b]场景过渡开始[/b][br][br]
-## [param target] : 目标场景路径
+## 完整场景过渡开始时发出。
+## [param target] 是目标场景路径。
 signal transition_started(target: String)
 
-## [b]场景过渡结束[/b][br]
-## 场景切换失败时仍会撤下遮罩后发出[br][br]
-## [param target] : 目标场景路径[br]
-## [param succeeded] : 场景切换是否成功
+## 完整场景过渡结束时发出；切换失败时仍会先撤下遮罩。
+## [param target] 是目标场景路径，[param succeeded] 表示场景切换是否成功。
 signal transition_finished(target: String, succeeded: bool)
 #endregion
 
-#region 配置
-## [b]默认遮罩颜色[/b]
+#region 服务配置
+## 默认遮罩颜色。
 var fade_color := Color("#080b12")
 
-## [b]默认单向淡变时长[/b]
+## 默认单向淡变时长。
 var fade_duration := 0.22
 #endregion
 
-#region 运行时状态
-## [b]场景服务引用[/b][br]
-## 由 [code]UFrame[/code] 初始化阶段注入
+#region 依赖引用
+## 由 [code]UFrame[/code] 初始化阶段注入的场景服务。
 var scene_service: UFrameSceneService
+#endregion
 
-## [b]遮罩画布层[/b]
+#region 运行时状态
+## 按需创建的顶层遮罩画布。
 var _layer: CanvasLayer
 
-## [b]全屏遮罩[/b]
+## 按需创建的全屏遮罩。
 var _overlay: ColorRect
 
-## [b]当前淡变动画[/b]
+## 当前淡变动画。
 var _fade_tween: Tween
 
-## [b]完整过渡状态[/b]
+## 是否正在执行完整场景过渡。
 var _busy := false
 #endregion
 
@@ -50,32 +49,22 @@ func _ready() -> void:
 #endregion
 
 #region 主要方法
-## [b]配置默认过渡[/b][br][br]
-## [param color] : 默认遮罩颜色[br]
-## [param duration] : 默认单向淡变秒数
-func configure(color := Color("#080b12"), duration := 0.22) -> void:
+## 配置默认遮罩颜色和单向淡变秒数。
+func configure(color: Color = Color("#080b12"), duration: float = 0.22) -> void:
 	fade_color = color
 	fade_duration = maxf(duration, 0.0)
 
-## [b]淡出至完全遮挡[/b][br][br]
-## [param duration] : 淡变秒数，负数时使用默认值[br]
-## [param color] : 遮罩颜色，红色分量为负数时使用默认值
-func fade_out(duration := -1.0, color := Color(-1, 0, 0, 0)) -> void:
+## 淡出至完全遮挡；负时长和红色分量为负的颜色分别使用默认配置。
+func fade_out(duration: float = -1.0, color: Color = Color(-1, 0, 0, 0)) -> void:
 	await _fade_to(1.0, _resolve_duration(duration), _resolve_color(color))
 
-## [b]淡入至完全透明[/b][br][br]
-## [param duration] : 淡变秒数，负数时使用默认值[br]
-## [param color] : 遮罩颜色，红色分量为负数时使用默认值
-func fade_in(duration := -1.0, color := Color(-1, 0, 0, 0)) -> void:
+## 淡入至完全透明；负时长和红色分量为负的颜色分别使用默认配置。
+func fade_in(duration: float = -1.0, color: Color = Color(-1, 0, 0, 0)) -> void:
 	await _fade_to(0.0, _resolve_duration(duration), _resolve_color(color))
 
-## [b]带过渡切换场景[/b][br]
-## 淡出后普通切换并等待新场景就绪，再淡入[br]
-## 过渡忙碌、场景服务不可用或切换失败时返回 [code]false[/code][br][br]
-## [param target] : 目标场景路径[br]
-## [param duration] : 单向淡变秒数，负数时使用默认值[br]
-## [param color] : 遮罩颜色，红色分量为负数时使用默认值
-func change_scene(target: String, duration := -1.0, color := Color(-1, 0, 0, 0)) -> bool:
+## 淡出后切换场景并等待新场景就绪，再淡入。
+## 过渡忙碌、场景服务不可用或切换失败时返回 [code]false[/code]。
+func change_scene(target: String, duration: float = -1.0, color: Color = Color(-1, 0, 0, 0)) -> bool:
 	if _busy or scene_service == null:
 		return false
 	_busy = true
@@ -83,7 +72,7 @@ func change_scene(target: String, duration := -1.0, color := Color(-1, 0, 0, 0))
 	var resolved_duration := _resolve_duration(duration)
 	var resolved_color := _resolve_color(color)
 	await _fade_to(1.0, resolved_duration, resolved_color)
-	# 等待明确的成功或错误结果。即使场景切换超时，下面也会撤掉黑色遮罩。
+	# 无论切换成功还是失败，取得明确结果后都要撤下遮罩
 	var error := await scene_service.change_scene_confirmed(target)
 	await _fade_to(0.0, resolved_duration, resolved_color)
 	_busy = false
@@ -91,16 +80,12 @@ func change_scene(target: String, duration := -1.0, color := Color(-1, 0, 0, 0))
 	transition_finished.emit(target, succeeded)
 	return succeeded
 
-## [b]带过渡异步切换场景[/b][br]
-## 淡出后在线程中加载场景并淡入；进度回调范围为 [code]0.0[/code] 到 [code]1.0[/code][br][br]
-## [param target] : 目标场景路径[br]
-## [param duration] : 单向淡变秒数，负数时使用默认值[br]
-## [param color] : 遮罩颜色，红色分量为负数时使用默认值[br]
-## [param on_progress] : 可选的加载进度回调
+## 淡出后在线程中加载场景并淡入；进度回调范围为 [code]0.0[/code] 到 [code]1.0[/code]。
+## 过渡忙碌、场景服务不可用或切换失败时返回 [code]false[/code]。
 func change_scene_async(
 	target: String,
-	duration := -1.0,
-	color := Color(-1, 0, 0, 0),
+	duration: float = -1.0,
+	color: Color = Color(-1, 0, 0, 0),
 	on_progress: Callable = Callable()
 ) -> bool:
 	if _busy or scene_service == null:
@@ -119,17 +104,13 @@ func change_scene_async(
 #endregion
 
 #region 查询方法
-## [b]判断是否正在过渡[/b]
+## 判断是否正在执行完整场景过渡。
 func is_busy() -> bool:
 	return _busy
 #endregion
 
 #region 内部方法
-## [b]执行遮罩淡变[/b][br]
-## 已有淡变时先等待其完成，透明后恢复鼠标事件穿透[br][br]
-## [param alpha] : 目标不透明度[br]
-## [param duration] : 淡变秒数[br]
-## [param color] : 遮罩颜色
+## 执行遮罩淡变；已有淡变时先等待其完成，透明后恢复鼠标事件穿透。
 func _fade_to(alpha: float, duration: float, color: Color) -> void:
 	_ensure_overlay()
 	if _fade_tween and _fade_tween.is_valid():
@@ -149,8 +130,7 @@ func _fade_to(alpha: float, duration: float, color: Color) -> void:
 	if is_zero_approx(target.a):
 		_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-## [b]确保全屏遮罩可用[/b][br]
-## 首次调用时创建始终处理的顶层 [CanvasLayer] 与 [ColorRect]
+## 首次调用时创建始终处理的顶层 [CanvasLayer] 与 [ColorRect]。
 func _ensure_overlay() -> void:
 	if _overlay:
 		return
@@ -163,13 +143,11 @@ func _ensure_overlay() -> void:
 	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_layer.add_child(_overlay)
 
-## [b]解析淡变时长[/b][br][br]
-## [param duration] : 请求时长，负数时使用默认值
+## 解析淡变时长；负数时使用默认值。
 func _resolve_duration(duration: float) -> float:
 	return fade_duration if duration < 0.0 else maxf(duration, 0.0)
 
-## [b]解析遮罩颜色[/b][br][br]
-## [param color] : 请求颜色，红色分量为负数时使用默认值
+## 解析遮罩颜色；红色分量为负数时使用默认值。
 func _resolve_color(color: Color) -> Color:
 	return fade_color if color.r < 0.0 else color
 #endregion

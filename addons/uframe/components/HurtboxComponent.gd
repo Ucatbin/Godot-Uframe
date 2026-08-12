@@ -1,10 +1,10 @@
 extends Area2D
 
-## 受击判定框组件
+## 受击判定框组件。
 ##
-## 作为 Hitbox/Hurtbox 系统的统一伤害结算入口，负责阵营、无敌时间与生命值检查[br]
-## 默认查找同级位置名为 [code]HealthComponent[/code] 的 [UFrameHealth][br][br]
-## [code]推荐场景结构：[/code]
+## 负责接收 [UFrameHitbox2D]、执行可选阵营过滤，并把伤害交给 [UFrameHealth] 结算。
+## 不保存生命值或伤害表现；默认依赖同级位置名为 [code]HealthComponent[/code] 的生命组件。
+## 打开 [code]examples/arena/arena_player.tscn[/code] 可查看以下场景组合：
 ## [codeblock]
 ## Player
 ## ├── HealthComponent       # UFrameHealth
@@ -13,29 +13,28 @@ extends Area2D
 ## [/codeblock]
 class_name UFrameHurtbox2D
 
-#region 配置
-## [b]生命组件路径[/b]
+#region Inspector 配置
+## 需要接收伤害的 [UFrameHealth] 节点路径。
 @export var health_path: NodePath = ^"../HealthComponent"
 
-## [b]是否过滤友军伤害[/b][br]
-## 仅在双方都有 [UFrameTeam] 时生效；任意一方没有阵营组件时仍允许伤害
+## 是否过滤友军伤害；仅在双方都有 [UFrameTeam] 时生效。
 @export var use_team_filter := true
 
-## [b]阵营组件路径[/b][br]
-## 留空时按 [code]TeamComponent[/code] 命名约定查找
+## 可选的 [UFrameTeam] 节点路径；留空时按 [code]TeamComponent[/code] 命名约定查找。
 @export var team_component_path: NodePath = ^"../TeamComponent"
 #endregion
 
-#region 运行时状态
-## [b]生命组件缓存[/b]
+#region 依赖引用
+## 由 [member health_path] 解析的生命组件。
 var _health: UFrameHealth
 
-## [b]阵营组件缓存[/b][br]
-## 不存在时不会产生警告，也不会阻止伤害
+## 由 [member team_component_path] 或命名约定解析的可选阵营组件。
+## 不存在时不会产生警告，也不会阻止伤害。
 var _team: UFrameTeam
 #endregion
 
 #region 生命周期
+## 解析局部依赖并连接 [signal Area2D.area_entered]。
 func _ready() -> void:
 	_health = get_node_or_null(health_path) as UFrameHealth
 	if use_team_filter:
@@ -48,10 +47,9 @@ func _ready() -> void:
 		push_warning("[UFrameHurtbox2D] 找不到 UFrameHealth：%s" % health_path)
 #endregion
 
-#region 主要方法
-## [b]接收命中[/b][br]
-## 返回实际伤害；周期性接触攻击也可以显式调用本方法复用完整结算链[br][br]
-## [param hitbox] : 进入本受击框的攻击判定框
+#region 伤害结算
+## 接收 [param hitbox] 并执行完整伤害结算，返回实际伤害。
+## 周期性接触攻击也可以显式调用本方法，而不必伪造区域进入事件。
 func receive_hit(hitbox: UFrameHitbox2D) -> int:
 	if hitbox == null or _health == null or not hitbox.can_hit(self):
 		return 0
@@ -67,10 +65,8 @@ func receive_hit(hitbox: UFrameHitbox2D) -> int:
 	return applied_damage
 #endregion
 
-#region 内部方法
-## [b]处理区域进入[/b][br]
-## 普通 [Area2D] 不会造成伤害[br][br]
-## [param area] : 进入本受击框的区域
+#region 碰撞输入
+## 把进入的 [param area] 识别为 Hitbox；普通 [Area2D] 不会造成伤害。
 func _on_area_entered(area: Area2D) -> void:
 	var hitbox := area as UFrameHitbox2D
 	if hitbox:
