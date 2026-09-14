@@ -4,11 +4,10 @@ extends Node
 ##
 ## 负责接收 [UFrameBehaviorManager] 注入的实体依赖，并把 Godot 帧回调转发给已进入的行为。
 ## 不负责行为之间的互斥切换；互斥玩法逻辑应使用 [UFrameStateMachine]。
-## 打开 [code]examples/arena/arena_player.tscn[/code] 可查看 Behavior 在实体场景中的静态组合。
 class_name UFrameBehavior
 
 #region Inspector 配置
-## 是否启用行为。
+## 是否启用行为。[br]
 ## 运行时修改会自动进入或退出行为，并同步帧处理状态。
 @export var enabled := true:
 	set(value):
@@ -34,7 +33,7 @@ class_name UFrameBehavior
 ## 所属行为管理器，由 [UFrameBehaviorManager] 自动注入。
 var manager: UFrameBehaviorManager = null
 
-## 所属实体，即管理器的父节点；由 [UFrameBehaviorManager] 自动注入。
+## 所属实体；由 [UFrameBehaviorManager] 自动注入。
 var entity: Node = null
 #endregion
 
@@ -115,8 +114,9 @@ func _sync_processing() -> void:
 	set_process(_behavior_entered)
 	set_physics_process(_behavior_entered)
 
-## 由 [UFrameBehaviorManager] 为直属子节点注入管理器和实体。
-## [param new_manager] 是所属管理器，[param new_entity] 是管理器所属实体。
+## 由 [UFrameBehaviorManager] 为直属子节点注入管理器和实体。[br][br]
+## [param new_manager] 所属管理器[br]
+## [param new_entity] 管理器所属实体
 func _bind_to_manager(new_manager: UFrameBehaviorManager, new_entity: Node) -> void:
 	manager = new_manager
 	entity = new_entity

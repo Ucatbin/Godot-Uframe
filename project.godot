@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="UFrame Examples"
+config/name="UFrame"
 run/main_scene="res://examples/example_browser.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
