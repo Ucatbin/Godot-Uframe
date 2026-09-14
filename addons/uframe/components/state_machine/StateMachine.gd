@@ -3,14 +3,13 @@ extends Node
 ## 节点式有限状态机组件。
 ##
 ## 负责收集直属 [UFrameState]、注入实体依赖、执行互斥切换，并转发普通帧与物理帧更新。
-## 不动态发现非直属状态，也不规定具体玩法数据；状态结构应稳定写入实体场景。
-## 打开 [code]examples/platformer/platformer_player.tscn[/code] 可查看完整状态机组合。
 class_name UFrameStateMachine
 
 #region 信号
-## 新状态的 [method UFrameState.on_enter] 执行完成后发出。
-## [param previous] 是上一个状态名，[param current] 是当前状态名。
-## 推荐使用 [method connect_state_changed] 订阅，避免初始化后连接时漏掉初始状态。
+## 新状态的 [method UFrameState.on_enter] 执行完成后发出;
+## 使用 [method connect_state_changed] 订阅，避免初始化后连接时漏掉初始状态。 [br][br]
+## [param previous] : 上一个状态 [br]
+## [param current] : 当前状态
 signal state_changed(previous: StringName, current: StringName)
 #endregion
 
@@ -56,8 +55,9 @@ func _physics_process(delta: float) -> void:
 #endregion
 
 #region 状态切换
-## 切换到 [param state_name]，并把状态切换数据字典 [param data] 传给新状态。
-## 目标不存在或已经是当前状态时保持不变。
+## 切换到新状态。 [br][br]
+## [param state_name] ： 新状态 [br]
+## [param data] ： 传递数据
 func change_state(state_name: StringName, data: Dictionary = {}) -> void:
 	if not _states.has(state_name):
 		push_error("[UFrameStateMachine] 找不到状态：%s" % state_name)
@@ -72,8 +72,8 @@ func change_state(state_name: StringName, data: Dictionary = {}) -> void:
 	current_state.on_enter(data)
 	state_changed.emit(previous_state, StringName(state_name))
 
-## 连接接收 [code]previous[/code] 与 [code]current[/code] 的状态变化 [param callback]。
-## 初始化后连接时会立即同步一次“空状态 → 当前状态”；重复连接不会再次同步。
+## 连接接收 [code]previous[/code] 与 [code]current[/code] 的状态变化。 [br][br]
+## [param callback] : 触发回调
 func connect_state_changed(callback: Callable) -> void:
 	if not callback.is_valid():
 		push_error("[UFrameStateMachine] 状态回调无效")

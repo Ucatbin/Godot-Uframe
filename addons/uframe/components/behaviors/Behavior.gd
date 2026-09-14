@@ -2,12 +2,11 @@ extends Node
 
 ## 可并行启停的实体行为基类。
 ##
-## 负责接收 [UFrameBehaviorManager] 注入的实体依赖，并把 Godot 帧回调转发给已进入的行为。
-## 不负责行为之间的互斥切换；互斥玩法逻辑应使用 [UFrameStateMachine]。
+## 仅关注行为本身，不负责行为之间的互斥切换；互斥玩法逻辑应使用 [UFrameStateMachine]。
 class_name UFrameBehavior
 
 #region Inspector 配置
-## 是否启用行为。[br]
+## 是否启用行为。 [br]
 ## 运行时修改会自动进入或退出行为，并同步帧处理状态。
 @export var enabled := true:
 	set(value):
@@ -51,11 +50,13 @@ func on_enter() -> void:
 func on_exit() -> void:
 	pass
 
-## 行为进入后由普通帧回调转发。[param _delta] 是当前帧间隔。
+## 由普通帧回调转发。 [br][br]
+## [param _delta] : 帧间隔
 func on_update(_delta: float) -> void:
 	pass
 
-## 行为进入后由物理帧回调转发。[param _delta] 是当前物理帧间隔。
+## 由物理帧回调转发。 [br][br]
+## [param _delta] : 物理帧间隔
 func on_physics_update(_delta: float) -> void:
 	pass
 #endregion
@@ -88,8 +89,8 @@ func _physics_process(delta: float) -> void:
 #endregion
 
 #region 行为控制
-## 设置行为是否启用；节点就绪后会同步进入或退出生命周期。
-## [param value] 表示新的启用状态。
+## 设置行为是否启用；节点就绪后会同步进入或退出生命周期。 [br][br]
+## [param value] : 启用状态
 func set_enabled(value: bool) -> void:
 	enabled = value
 #endregion
@@ -114,9 +115,9 @@ func _sync_processing() -> void:
 	set_process(_behavior_entered)
 	set_physics_process(_behavior_entered)
 
-## 由 [UFrameBehaviorManager] 为直属子节点注入管理器和实体。[br][br]
-## [param new_manager] 所属管理器[br]
-## [param new_entity] 管理器所属实体
+## 由 [UFrameBehaviorManager] 为直属子节点注入管理器和实体。 [br][br]
+## [param new_manager] : 所属管理器 [br]
+## [param new_entity] : 所属实体
 func _bind_to_manager(new_manager: UFrameBehaviorManager, new_entity: Node) -> void:
 	manager = new_manager
 	entity = new_entity

@@ -2,13 +2,11 @@ extends Node
 
 ## 节点式互斥状态基类。
 ##
-## 负责接收 [UFrameStateMachine] 与所属实体引用，并定义一次性装配和状态生命周期回调。
 ## 不自行切换状态或启用帧处理；当前状态的更新只由所属状态机转发。
-## 打开 [code]examples/platformer/platformer_player.tscn[/code] 可查看 State 作为状态机直属子节点的组合。
 class_name UFrameState
 
 #region Inspector 配置
-## 状态语义 ID；留空时在进入场景树时使用节点名。
+## 状态 ID
 @export var state_name: StringName
 #endregion
 
@@ -42,7 +40,8 @@ func setup(new_state_machine: Node, new_entity: Node) -> void:
 func on_setup() -> void:
 	pass
 
-## 每次进入本状态时调用；[param _data] 是状态切换方传入的数据字典。
+## 每次进入本状态时调用。 [br][br]
+## [param _data] : 状态切换方传入的数据
 func on_enter(_data: Dictionary = {}) -> void:
 	pass
 
@@ -50,11 +49,13 @@ func on_enter(_data: Dictionary = {}) -> void:
 func on_exit() -> void:
 	pass
 
-## 本状态激活时由状态机转发普通帧更新。[param _delta] 是当前帧间隔。
+## 由状态机转发普通帧更新调用。 [br][br]
+## [param _delta] : 帧间隔
 func on_update(_delta: float) -> void:
 	pass
 
-## 本状态激活时由状态机转发物理帧更新。[param _delta] 是当前物理帧间隔。
+## 由状态机转发物理帧更新调用。 [br][br]
+## [param _delta] : 物理帧间隔
 func on_physics_update(_delta: float) -> void:
 	pass
 #endregion
