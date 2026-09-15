@@ -13,8 +13,10 @@ const SAVE_DIR := "user://saves/"
 #endregion
 
 #region 主要方法
-## 保存 Resource；[param file_name] 不含扩展名，成功提交主档时返回 [code]true[/code]。
-## [UFrameRunData] 会在写入前自动更新时间。
+## 保存 Resource；成功提交主档时返回 [code]true[/code]。 [br]
+## [UFrameRunData] 会在写入前自动更新时间。 [br][br]
+## [param data] : 需要保存的 Resource [br]
+## [param file_name] : 存档槽名，不含扩展名或目录
 func save(data: Resource, file_name: String = "auto_save") -> bool:
 	if data == null or not _is_valid_file_name(file_name):
 		return false
@@ -44,8 +46,9 @@ func save(data: Resource, file_name: String = "auto_save") -> bool:
 		DirAccess.remove_absolute(paths.backup)
 	return true
 
-## 读取 Resource；主档损坏或缺失时依次尝试临时档与备份档。
-## 成功读取恢复文件后会把它提升为主档；所有候选均不可用时返回新的 [UFrameRunData]。
+## 读取 Resource；主档损坏或缺失时依次尝试临时档与备份档。 [br]
+## 成功读取恢复文件后会把它提升为主档；所有候选均不可用时返回 [code]null[/code]，由调用方创建新游戏数据。 [br][br]
+## [param file_name] : 存档槽名，不含扩展名或目录
 func load(file_name: String = "auto_save") -> Resource:
 	if not _is_valid_file_name(file_name):
 		return null
@@ -64,9 +67,10 @@ func load(file_name: String = "auto_save") -> Resource:
 	if data:
 		_promote_recovery_file(paths.backup, paths.main)
 		return data
-	return UFrameRunData.new()
+	return null
 
-## 删除存档槽的主档、临时档和备份档；至少移除一个文件时返回 [code]true[/code]。
+## 删除存档槽的主档、临时档和备份档；至少移除一个文件时返回 [code]true[/code]。 [br][br]
+## [param file_name] : 存档槽名，不含扩展名或目录
 func delete(file_name: String = "auto_save") -> bool:
 	if not _is_valid_file_name(file_name):
 		return false
@@ -95,7 +99,8 @@ func list_saves() -> Array[String]:
 #endregion
 
 #region 内部方法
-## 忽略缓存读取候选 Resource；文件不存在或无法解析时返回 [code]null[/code]。
+## 忽略缓存读取候选 Resource；文件不存在或无法解析时返回 [code]null[/code]。 [br][br]
+## [param path] : 目标资源路径
 func _load_resource(path: String) -> Resource:
 	if not FileAccess.file_exists(path):
 		return null
@@ -104,7 +109,9 @@ func _load_resource(path: String) -> Resource:
 		push_warning("[UFrameSave] 无法读取候选存档：%s" % path)
 	return data
 
-## 删除旧目标后，把成功读取的候选文件改为正式文件名。
+## 删除旧目标后，把成功读取的候选文件改为正式文件名。 [br][br]
+## [param source] : 已成功读取的恢复文件路径 [br]
+## [param target] : 正式存档文件路径
 func _promote_recovery_file(source: String, target: String) -> void:
 	if FileAccess.file_exists(target):
 		DirAccess.remove_absolute(target)
@@ -112,7 +119,8 @@ func _promote_recovery_file(source: String, target: String) -> void:
 	if error != OK:
 		push_warning("[UFrameSave] 已读取恢复档，但无法恢复文件名：%s" % source)
 
-## 清理由 [method _get_paths] 生成的临时档和备份档。
+## 清理由 [method _get_paths] 生成的临时档和备份档。 [br][br]
+## [param paths] : 由 [method _get_paths] 生成的存档路径表
 func _cleanup_recovery_files(paths: Dictionary) -> void:
 	for path: String in [paths.temporary, paths.backup]:
 		if FileAccess.file_exists(path):
@@ -130,7 +138,8 @@ func _ensure_save_directory() -> bool:
 		push_error("[UFrameSave] 无法创建存档目录：%d" % error)
 	return error == OK
 
-## 生成包含主档、临时档和备份档的路径表。
+## 生成包含主档、临时档和备份档的路径表。 [br][br]
+## [param file_name] : 存档槽名，不含扩展名或目录
 func _get_paths(file_name: String) -> Dictionary:
 	return {
 		"main": SAVE_DIR + file_name + ".tres",
@@ -138,7 +147,8 @@ func _get_paths(file_name: String) -> Dictionary:
 		"backup": SAVE_DIR + file_name + ".bak.tres",
 	}
 
-## 检查存档槽名，拒绝空值、非法文件名字符与路径穿越片段。
+## 检查存档槽名，拒绝空值、非法文件名字符与路径穿越片段。 [br][br]
+## [param file_name] : 存档槽名，不含扩展名或目录
 func _is_valid_file_name(file_name: String) -> bool:
 	return not file_name.is_empty() \
 		and file_name == file_name.validate_filename() \

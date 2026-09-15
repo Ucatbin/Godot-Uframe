@@ -8,8 +8,9 @@ extends Node
 class_name UFrameTeam
 
 #region 信号
-## 阵营 ID 被设置时发出。
-## [param old_id] 是原阵营 ID，[param new_id] 是新阵营 ID。
+## 阵营 ID 被设置时发出。 [br][br]
+## [param old_id] : 原阵营 ID [br]
+## [param new_id] : 新阵营 ID
 signal team_changed(old_id: int, new_id: int)
 #endregion
 
@@ -25,7 +26,8 @@ signal team_changed(old_id: int, new_id: int)
 #endregion
 
 #region 阵营操作
-## 把阵营设为 [param new_id]；即使 ID 未变化也会发出 [signal team_changed]。
+## 把阵营设为 [param new_id]；即使 ID 未变化也会发出 [signal team_changed]。 [br][br]
+## [param new_id] : 新阵营 ID
 func set_team(new_id: int) -> void:
 	var old := team_id
 	team_id = new_id
@@ -33,7 +35,8 @@ func set_team(new_id: int) -> void:
 #endregion
 
 #region 关系查询
-## 判断 [param other] 是否敌对；目标为空时视为敌对。
+## 判断 [param other] 是否敌对；目标为空时视为敌对。 [br][br]
+## [param other] : 要比较的阵营组件
 func is_hostile(other: UFrameTeam) -> bool:
 	if other == null:
 		return true  # 无阵营时保持伤害系统独立可用
@@ -43,18 +46,20 @@ func is_hostile(other: UFrameTeam) -> bool:
 		return true
 	return other.team_id in hostile_teams
 
-## 判断 [param other] 是否为友方。
+## 判断 [param other] 是否为友方。 [br][br]
+## [param other] : 要比较的阵营组件
 func is_ally(other: UFrameTeam) -> bool:
 	return not is_hostile(other)
 
-## 在 [param node] 或其父节点下查找名为 [code]TeamComponent[/code] 的 [UFrameTeam]。
-## 找不到时返回 [code]null[/code]；本方法不会继续向更高层遍历。
+## 在 [param node] 或其父节点下查找名为 [code]TeamComponent[/code] 的 [UFrameTeam]。 [br]
+## 找不到时返回 [code]null[/code]；本方法不会继续向更高层遍历。 [br][br]
+## [param node] : 待查找阵营的节点
 static func of(node: Node) -> UFrameTeam:
-	if node == null:
+	if not is_instance_valid(node):
 		return null
-	if node.has_node("TeamComponent"):
-		return node.get_node("TeamComponent")
-	if node.get_parent() and node.get_parent().has_node("TeamComponent"):
-		return node.get_parent().get_node("TeamComponent")
-	return null
+	var team := node.get_node_or_null(^"TeamComponent") as UFrameTeam
+	if team:
+		return team
+	var parent := node.get_parent()
+	return parent.get_node_or_null(^"TeamComponent") as UFrameTeam if parent else null
 #endregion

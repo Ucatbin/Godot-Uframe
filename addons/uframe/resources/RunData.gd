@@ -41,7 +41,9 @@ func _init() -> void:
 #endregion
 
 #region 主要方法
-## 写入一项扩展数据；同名键会覆盖旧值。
+## 写入一项扩展数据；同名键会覆盖旧值。 [br][br]
+## [param key] : 扩展数据的键名 [br]
+## [param value] : 要写入的值
 func set_custom(key: StringName, value: Variant) -> void:
 	custom_data[key] = value
 
@@ -51,7 +53,9 @@ func touch() -> void:
 #endregion
 
 #region 查询方法
-## 获取扩展数据；目标不存在时返回 [param default_value]。
+## 获取扩展数据；目标不存在时返回 [param default_value]。 [br][br]
+## [param key] : 扩展数据的键名 [br]
+## [param default_value] : 目标不存在时返回的默认值
 func get_custom(key: StringName, default_value: Variant = null) -> Variant:
 	return custom_data.get(key, default_value)
 #endregion

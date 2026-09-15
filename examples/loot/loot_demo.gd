@@ -158,6 +158,9 @@ func _roll_once() -> void:
 	if not cursor_stack.is_empty():
 		result_label.text = "请先放下鼠标携带的物品，再进行抽取。"
 		return
+	if Input.is_key_pressed(KEY_SHIFT):
+		_roll_batch()
+		return
 	roll_count += 1
 	var result := loot_table.roll(pity_misses)
 	pity_misses = result.miss_count
@@ -170,6 +173,23 @@ func _roll_once() -> void:
 		result_label.text = "第 %d 次：获得 %s × %d %s" % [roll_count, data.display_name, added, suffix]
 		if added < result.count:
 			result_label.text += "；背包空间不足，剩余掉落未拾取。"
+	_refresh_summary()
+
+## Shift 抽取十次，展示掉落合并与一次背包事务；未装下的数量由玩法明确反馈。
+func _roll_batch() -> void:
+	var result := loot_table.roll_multi(10, pity_misses)
+	pity_misses = result.miss_count
+	roll_count += 10
+	var requested: Dictionary[StringName, int] = {}
+	var requested_count := 0
+	for drop: Dictionary in result.drops:
+		requested[drop.content_id] = drop.count
+		requested_count += int(drop.count)
+	var added := inventory.add_items(requested)
+	var added_count := 0
+	for item_id: StringName in added:
+		added_count += added[item_id]
+	result_label.text = "十连抽取完成：装入 %d 件，%d 件未拾取。" % [added_count, requested_count - added_count]
 	_refresh_summary()
 
 func _refresh_slot(index: int) -> void:

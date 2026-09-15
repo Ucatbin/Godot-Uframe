@@ -72,8 +72,11 @@ func _process(delta: float) -> void:
 #endregion
 
 #region 主要方法
-## 绑定主相机；切换前恢复旧相机，并记录新相机的稳定偏移与旋转。
+## 绑定主相机；切换前恢复旧相机，并记录新相机的稳定偏移与旋转。 [br][br]
+## [param camera] : 接收震动的主相机
 func set_camera(camera: Camera2D) -> void:
+	if is_instance_valid(_camera) and _camera == camera:
+		return
 	if is_instance_valid(_camera) and _camera != camera:
 		_reset_camera_transform()
 	_camera = camera
@@ -81,7 +84,11 @@ func set_camera(camera: Camera2D) -> void:
 		_base_offset = _camera.offset
 		_base_rotation_degrees = _camera.rotation_degrees
 
-## 配置震动参数，通常在游戏启动时调用一次。
+## 配置震动参数，通常在游戏启动时调用一次。 [br][br]
+## [param max_offset] : 满强度时的最大位置偏移，单位为像素 [br]
+## [param max_rotation_degrees] : 满强度时的最大旋转角度，单位为度 [br]
+## [param decay_rate] : 每秒衰减的创伤值 [br]
+## [param trauma_power] : 创伤值转换为震动强度时使用的指数
 func configure_shake(
 	max_offset: Vector2 = Vector2(12.0, 9.0),
 	max_rotation_degrees: float = 1.5,
@@ -93,7 +100,8 @@ func configure_shake(
 	_decay_rate = maxf(decay_rate, 0.01)
 	_trauma_power = maxf(trauma_power, 1.0)
 
-## 增加震动创伤；多次冲击会累加，但不会超过 [code]1.0[/code]。
+## 增加震动创伤；多次冲击会累加，但不会超过 [code]1.0[/code]。 [br][br]
+## [param amount] : 本次增加的创伤值；非正数不生效
 func add_trauma(amount: float = 0.25) -> void:
 	if amount <= 0.0:
 		return

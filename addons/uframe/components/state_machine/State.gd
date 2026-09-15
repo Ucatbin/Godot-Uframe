@@ -24,8 +24,10 @@ var _is_setup := false
 #endregion
 
 #region 状态装配
-## 注入状态机与实体，并执行一次 [method on_setup]。
-## 仅由 [UFrameStateMachine] 在收集完全部状态后调用；重复调用不会再次装配。
+## 注入状态机与实体，并执行一次 [method on_setup]。 [br]
+## 仅由 [UFrameStateMachine] 在收集完全部状态后调用；重复调用不会再次装配。 [br][br]
+## [param new_state_machine] : 所属状态机 [br]
+## [param new_entity] : 所属实体
 func setup(new_state_machine: Node, new_entity: Node) -> void:
 	if _is_setup:
 		return

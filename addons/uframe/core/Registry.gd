@@ -15,12 +15,14 @@ extends Node
 class_name UFrameRegistry
 
 #region 信号
-## 首次注册或覆盖同类型下的已有 ID 后发出。
-## [param content_type] 是内容分类，[param content_id] 是该分类下的唯一 ID。
+## 首次注册或覆盖同类型下的已有 ID 后发出。 [br][br]
+## [param content_type] : 内容分类 [br]
+## [param content_id] : 该分类下的唯一 ID
 signal content_registered(content_type: StringName, content_id: StringName)
 
-## 仅在 [method unregister] 成功移除一项内容后发出；[method clear] 不会发出该信号。
-## [param content_type] 是内容分类，[param content_id] 是已移除的唯一 ID。
+## 仅在 [method unregister] 成功移除一项内容后发出；[method clear] 不会发出该信号。 [br][br]
+## [param content_type] : 内容分类 [br]
+## [param content_id] : 该分类下的唯一 ID
 signal content_unregistered(content_type: StringName, content_id: StringName)
 #endregion
 
@@ -30,8 +32,11 @@ var _registry: Dictionary[StringName, Dictionary] = {}
 #endregion
 
 #region 主要方法
-## 注册非空内容；参数有效时返回 [code]true[/code]。
-## 同类型下的重复 ID 会覆盖旧值、发出警告并再次发出 [signal content_registered]。
+## 注册非空内容；参数有效时返回 [code]true[/code]。 [br]
+## 同类型下的重复 ID 会覆盖旧值、发出警告并再次发出 [signal content_registered]。 [br][br]
+## [param content_type] : 内容分类 [br]
+## [param content_id] : 该分类下的唯一 ID [br]
+## [param value] : 要写入的值
 func register(content_type: StringName, content_id: StringName, value: Variant) -> bool:
 	if content_type.is_empty() or content_id.is_empty() or value == null:
 		push_error("[UFrameRegistry] content_type、content_id 和 value 不能为空")
@@ -43,8 +48,10 @@ func register(content_type: StringName, content_id: StringName, value: Variant) 
 	content_registered.emit(content_type, content_id)
 	return true
 
-## 移除指定内容；目标不存在时返回 [code]false[/code]。
-## 类型下没有剩余内容时，会同时清理该类型。
+## 移除指定内容；目标不存在时返回 [code]false[/code]。 [br]
+## 类型下没有剩余内容时，会同时清理该类型。 [br][br]
+## [param content_type] : 内容分类 [br]
+## [param content_id] : 该分类下的唯一 ID
 func unregister(content_type: StringName, content_id: StringName) -> bool:
 	var bucket: Dictionary = _registry.get(content_type, {})
 	if not bucket.erase(content_id):
@@ -54,9 +61,12 @@ func unregister(content_type: StringName, content_id: StringName) -> bool:
 	content_unregistered.emit(content_type, content_id)
 	return true
 
-## 非递归扫描目录中的 [code].tres[/code] 与 [code].res[/code] 文件并注册。
-## 文件基本名作为 ID；设置 [param prefix] 后格式为 [code]前缀:文件基本名[/code]。
-## 返回成功加载并注册的文件数量，覆盖已有 ID 也计入数量。
+## 非递归扫描目录中的 [code].tres[/code] 与 [code].res[/code] 文件并注册。 [br]
+## 文件基本名作为 ID；设置 [param prefix] 后格式为 [code]前缀:文件基本名[/code]。 [br]
+## 返回成功加载并注册的文件数量，覆盖已有 ID 也计入数量。 [br][br]
+## [param content_type] : 内容分类 [br]
+## [param directory_path] : 待扫描目录路径 [br]
+## [param prefix] : 注册 ID 的前缀；为空时直接使用文件基本名
 func register_from_directory(content_type: StringName, directory_path: String, prefix: StringName = &"") -> int:
 	var directory := DirAccess.open(directory_path)
 	if directory == null:
@@ -77,8 +87,9 @@ func register_from_directory(content_type: StringName, directory_path: String, p
 			registered += 1
 	return registered
 
-## 清理注册内容；[param content_type] 为空时清理整个注册表，否则只清理指定类型。
-## 本方法不会发出 [signal content_unregistered]。
+## 清理全部或指定分类的注册内容。 [br]
+## 本方法不会发出 [signal content_unregistered]。 [br][br]
+## [param content_type] : 待清理的分类；为空时清理整个注册表
 func clear(content_type: StringName = &"") -> void:
 	if content_type.is_empty():
 		_registry.clear()
@@ -87,15 +98,21 @@ func clear(content_type: StringName = &"") -> void:
 #endregion
 
 #region 查询方法
-## 判断指定类型和 ID 的内容是否存在。
+## 判断指定类型和 ID 的内容是否存在。 [br][br]
+## [param content_type] : 内容分类 [br]
+## [param content_id] : 该分类下的唯一 ID
 func has_value(content_type: StringName, content_id: StringName) -> bool:
 	return _registry.has(content_type) and _registry[content_type].has(content_id)
 
-## 获取指定内容；目标不存在时返回 [param default_value]。
+## 获取指定内容；目标不存在时返回 [param default_value]。 [br][br]
+## [param content_type] : 内容分类 [br]
+## [param content_id] : 该分类下的唯一 ID [br]
+## [param default_value] : 目标不存在时返回的默认值
 func get_value(content_type: StringName, content_id: StringName, default_value: Variant = null) -> Variant:
 	return _registry.get(content_type, {}).get(content_id, default_value)
 
-## 获取类型下的全部 ID，返回新的键数组。
+## 获取类型下的全部 ID，返回新的键数组。 [br][br]
+## [param content_type] : 内容分类
 func list_ids(content_type: StringName) -> Array:
 	return _registry.get(content_type, {}).keys()
 
@@ -103,7 +120,8 @@ func list_ids(content_type: StringName) -> Array:
 func list_types() -> Array:
 	return _registry.keys()
 
-## 获取类型下的全部内容，返回字典浅拷贝。
+## 获取类型下的全部内容，返回字典浅拷贝。 [br][br]
+## [param content_type] : 内容分类
 func get_all(content_type: StringName) -> Dictionary:
 	return _registry.get(content_type, {}).duplicate()
 #endregion

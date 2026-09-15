@@ -40,12 +40,15 @@ func set_all_enabled(value: bool) -> void:
 ## 按节点名获取直属行为；找不到或节点类型不符时返回 [code]null[/code]。 [br][br]
 ## [param behavior_name] : 节点名
 func get_behavior(behavior_name: StringName) -> UFrameBehavior:
-	for child in get_children():
-		if child.name == behavior_name and child is UFrameBehavior:
-			return child
-	return null
+	# 查询只接受单个节点名，防止路径跳出直属行为范围。
+	var path := NodePath(behavior_name)
+	if path.is_absolute() or path.get_name_count() != 1 or path.get_subname_count() != 0:
+		return null
+	var behavior := get_node_or_null(path) as UFrameBehavior
+	return behavior if behavior and behavior.get_parent() == self else null
 
-## 判断是否存在名为 [param behavior_name] 的直属行为。
+## 判断是否存在名为 [param behavior_name] 的直属行为。 [br][br]
+## [param behavior_name] : 直属行为节点名
 func has_behavior(behavior_name: StringName) -> bool:
 	return get_behavior(behavior_name) != null
 #endregion
@@ -60,7 +63,7 @@ func _on_child_entered_tree(child: Node) -> void:
 		push_warning("[UFrameBehaviorManager] 直属子节点 %s 不是 UFrameBehavior" % child.name)
 
 ## 向直属 [param child] 注入当前管理器及其所属实体。 [br][br]
-## [param child] : 需要注入的行为节点
+## [param child] : 需要注入的直属行为节点
 func _bind_behavior(child: UFrameBehavior) -> void:
 	if child.get_parent() != self:
 		return

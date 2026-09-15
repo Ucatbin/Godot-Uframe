@@ -60,6 +60,8 @@
 
 操作：拖拽格子移动、合并或交换；右键拿 1 个；Ctrl + 右键拿一半；左键放下鼠标物品。
 
+点击抽取按钮进行一次掉落，按住 Shift 点击可抽取十次，展示 `LootTable.roll_multi()` 合并结果后通过 `Inventory.add_items()` 一次提交背包变化。
+
 展示内容：
 
 - `loot_demo.tscn` 直接包含 `Player/InventoryComponent`、全部固定 UI 和 `SlotGrid` 挂载点；

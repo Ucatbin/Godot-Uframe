@@ -69,16 +69,17 @@ func _ready() -> void:
 #endregion
 
 #region 查询方法
-## 判断模块设置是否启用。
-## [param module_name] 是不含设置路径前缀的模块名。
+## 判断模块设置是否启用。 [br][br]
+## [param module_name] : 不含设置路径前缀的模块名
 func is_module_enabled(module_name: String) -> bool:
 	return ProjectSettings.get_setting("uframe/modules/%s" % module_name, false)
 #endregion
 
 #region 内部方法
-## 根据项目设置创建可选模块；设置关闭时返回 [code]null[/code]。
-## [param setting] 是完整的项目设置键，[param script] 是模块脚本，
-## [param node_name] 是创建后的节点名。
+## 根据项目设置创建可选模块；设置关闭时返回 [code]null[/code]。 [br][br]
+## [param setting] : 完整的项目设置键 [br]
+## [param script] : 模块脚本 [br]
+## [param node_name] : 创建后的节点名
 func _create_module(setting: String, script: GDScript, node_name: StringName) -> Node:
 	if not ProjectSettings.get_setting(setting, false):
 		return null

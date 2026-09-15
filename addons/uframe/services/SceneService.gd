@@ -8,25 +8,24 @@ extends Node
 ## 只有新场景真正成为 [member SceneTree.current_scene] 后才发出 [signal scene_changed]。
 class_name UFrameSceneService
 
-#region 常量
-## 场景切换确认的最大等待帧数。
-## Godot 在帧边界完成场景替换，因此同步切换需要有限帧数确认最终结果。
-const SCENE_CONFIRMATION_MAX_FRAMES := 16
-#endregion
-
 #region 信号
-## 请求通过路径验证、即将提交时发出。
-## [param from] 是当前主场景路径，[param to] 是目标主场景路径。
+## 请求通过路径验证、即将提交时发出。 [br][br]
+## [param from] : 当前主场景路径 [br]
+## [param to] : 目标主场景路径
 signal scene_changing(from: String, to: String)
 
-## 新场景已经成为 [member SceneTree.current_scene] 时发出。
-## [param new_scene] 是已经确认生效的新主场景路径。
+## 新场景已经成为 [member SceneTree.current_scene] 时发出。 [br][br]
+## [param new_scene] : 已确认生效的新主场景路径
 signal scene_changed(new_scene: String)
 #endregion
 
 #region 运行时状态
-## 当前主场景路径，仅在确认切换完成后更新。
-var current_scene_path := ""
+## 直接读取 SceneTree 的当前主场景路径；切换间隙或不在树中时为空。
+## 原生场景切换也会立即反映在此查询中，不维护第二份场景状态。
+var current_scene_path: String:
+	get:
+		var tree := get_tree() if is_inside_tree() else null
+		return tree.current_scene.scene_file_path if tree and tree.current_scene else ""
 
 ## 叠加场景表：场景路径 → 当前主场景下的实例。
 var _overlay_scenes: Dictionary[String, Node] = {}
@@ -35,15 +34,9 @@ var _overlay_scenes: Dictionary[String, Node] = {}
 var _request_generation := 0
 #endregion
 
-#region 生命周期
-func _ready() -> void:
-	var current := get_tree().current_scene
-	if current:
-		current_scene_path = current.scene_file_path
-#endregion
-
 #region 主要方法
-## 提交普通场景切换并返回 Godot [code]Error[/code]；成功提交后可等待 [signal scene_changed]。
+## 提交普通场景切换并返回 Godot [code]Error[/code]；成功提交后可等待 [signal scene_changed]。 [br][br]
+## [param path] : 目标资源路径
 func change_scene(path: String) -> Error:
 	var request := _submit_scene_change(path)
 	var error: Error = request.error
@@ -51,7 +44,8 @@ func change_scene(path: String) -> Error:
 		_confirm_scene_change.call_deferred(path, int(request.generation))
 	return error
 
-## 切换并等待目标真正成为 [member SceneTree.current_scene]，返回最终 Godot [code]Error[/code]。
+## 切换并等待目标真正成为 [member SceneTree.current_scene]，返回最终 Godot [code]Error[/code]。 [br][br]
+## [param path] : 目标资源路径
 func change_scene_confirmed(path: String) -> Error:
 	var request := _submit_scene_change(path)
 	var error: Error = request.error
@@ -59,8 +53,9 @@ func change_scene_confirmed(path: String) -> Error:
 		return error
 	return await _confirm_scene_change(path, int(request.generation))
 
-## 在线程中加载并切换场景；返回 [constant OK] 表示新场景已经成为当前主场景。
-## [param on_progress] 是可选加载进度回调，参数范围为 [code]0.0[/code] 到 [code]1.0[/code]。
+## 在线程中加载并切换场景；返回 [constant OK] 表示新场景已经成为当前主场景。 [br][br]
+## [param path] : 目标资源路径 [br]
+## [param on_progress] : 可选加载进度回调，接收 [code]0.0[/code] 到 [code]1.0[/code] 的进度值
 func change_scene_async(path: String, on_progress: Callable = Callable()) -> Error:
 	if not _is_valid_scene_path(path):
 		return ERR_FILE_NOT_FOUND
@@ -68,6 +63,8 @@ func change_scene_async(path: String, on_progress: Callable = Callable()) -> Err
 	var generation := _request_generation
 	var previous := current_scene_path
 	scene_changing.emit(previous, path)
+	if generation != _request_generation:
+		return ERR_SKIP
 	var error := ResourceLoader.load_threaded_request(path)
 	if error != OK:
 		push_error("[UFrameSceneService] 无法开始加载：%s (%d)" % [path, error])
@@ -103,12 +100,11 @@ func change_scene_async(path: String, on_progress: Callable = Callable()) -> Err
 ## 重新加载当前主场景；没有可用路径时返回 [constant ERR_DOES_NOT_EXIST]。
 func reload_current() -> Error:
 	var path := current_scene_path
-	if path.is_empty() and get_tree().current_scene:
-		path = get_tree().current_scene.scene_file_path
 	return change_scene(path) if not path.is_empty() else ERR_DOES_NOT_EXIST
 
-## 在当前主场景下添加叠加场景；同一路径已有有效实例时直接返回原实例。
-## 路径无效、加载失败或没有当前主场景时返回 [code]null[/code]。
+## 在当前主场景下添加叠加场景；同一路径已有有效实例时直接返回原实例。 [br]
+## 路径无效、加载失败或没有当前主场景时返回 [code]null[/code]。 [br][br]
+## [param path] : 目标资源路径
 func add_scene(path: String) -> Node:
 	if _overlay_scenes.has(path) and is_instance_valid(_overlay_scenes[path]):
 		return _overlay_scenes[path]
@@ -126,7 +122,8 @@ func add_scene(path: String) -> Node:
 	, CONNECT_ONE_SHOT)
 	return instance
 
-## 移除叠加场景；目标存在时排队释放并返回 [code]true[/code]。
+## 移除叠加场景；目标存在时排队释放并返回 [code]true[/code]。 [br][br]
+## [param path] : 目标资源路径
 func remove_scene(path: String) -> bool:
 	var instance := _overlay_scenes.get(path) as Node
 	if not is_instance_valid(instance):
@@ -138,7 +135,8 @@ func remove_scene(path: String) -> bool:
 #endregion
 
 #region 内部方法
-## 提交普通场景切换，返回 [code]error[/code] 与本次请求的 [code]generation[/code]。
+## 提交普通场景切换，返回 [code]error[/code] 与本次请求的 [code]generation[/code]。 [br][br]
+## [param path] : 目标资源路径
 func _submit_scene_change(path: String) -> Dictionary:
 	if not _is_valid_scene_path(path):
 		return {"error": ERR_FILE_NOT_FOUND, "generation": _request_generation}
@@ -146,6 +144,8 @@ func _submit_scene_change(path: String) -> Dictionary:
 	var generation := _request_generation
 	var previous := current_scene_path
 	scene_changing.emit(previous, path)
+	if generation != _request_generation:
+		return {"error": ERR_SKIP, "generation": generation}
 	var error := get_tree().change_scene_to_file(path)
 	if error != OK:
 		push_error("[UFrameSceneService] 场景切换失败：%s (%d)" % [path, error])
@@ -153,27 +153,23 @@ func _submit_scene_change(path: String) -> Dictionary:
 	_clear_overlay_records()
 	return {"error": OK, "generation": generation}
 
-## 在有限帧数内确认目标已经成为当前场景；请求被覆盖时返回 [constant ERR_SKIP]。
+## 等待原生 SceneTree.scene_changed 后确认目标；请求被覆盖时返回 ERR_SKIP。 [br]
+## 成功提交才进入此方法，失败在提交阶段直接返回；无需按固定帧数轮询。 [br][br]
+## [param path] : 目标资源路径 [br]
+## [param generation] : 本次请求的代次，用于识别已被覆盖的请求
 func _confirm_scene_change(path: String, generation: int) -> Error:
-	# 场景切换在帧边界提交；有限轮询兼容不同后端，也确保失败时能返回明确错误
-	for attempt in range(SCENE_CONFIRMATION_MAX_FRAMES + 1):
-		if generation != _request_generation:
-			return ERR_SKIP
-		if _current_scene_matches(path):
-			current_scene_path = path
-			scene_changed.emit(path)
-			return OK
-		if attempt < SCENE_CONFIRMATION_MAX_FRAMES:
-			await get_tree().process_frame
-	push_error("[UFrameSceneService] 等待新场景超时：%s" % path)
-	return ERR_TIMEOUT
+	if generation != _request_generation:
+		return ERR_SKIP
+	var tree := get_tree()
+	if tree.current_scene == null or current_scene_path != path:
+		await tree.scene_changed
+	if generation != _request_generation or current_scene_path != path:
+		return ERR_SKIP
+	scene_changed.emit(path)
+	return OK
 
-## 判断当前主场景是否匹配目标路径。
-func _current_scene_matches(path: String) -> bool:
-	var current := get_tree().current_scene
-	return current != null and current.scene_file_path == path
-
-## 检查场景路径；空路径或无法作为 [PackedScene] 加载时返回 [code]false[/code]。
+## 检查场景路径；空路径或无法作为 [PackedScene] 加载时返回 [code]false[/code]。 [br][br]
+## [param path] : 目标资源路径
 func _is_valid_scene_path(path: String) -> bool:
 	if path.is_empty() or not ResourceLoader.exists(path, "PackedScene"):
 		push_error("[UFrameSceneService] 场景不存在：%s" % path)

@@ -2,7 +2,7 @@
 
 文档状态：当前事实说明
 对应版本：UFrame 0.4.0 / Godot 4.7
-最后核对：2026-08-11
+最后核对：2026-09-15
 
 本文只描述仓库当前已经实现的职责、依赖与组合方式。目标源码、场景和自动化测试是最终事实来源。
 
@@ -76,7 +76,7 @@ components ──按需协作──> 其他 components 或 resources
 
 - UFrame 创建 EventBus、Registry 和可选服务。
 - TransitionService 委托 SceneService 完成场景加载。
-- Health 可以通过配置关系读取或写入 Stats 的 `max_hp`，但不会监听 Stats 的外部变化并自动同步当前 HP。
+- Health 可以通过配置关系读取或写入 Stats 的 `max_hp`；补满、复位与更换属性依赖统一限制 HP 并通知变化，但不会监听 Stats 的外部变化并自动同步当前 HP。
 - Hurtbox 协调 Hitbox、Health 与可选 Team。
 - Stats 应用 StatModifier。
 - StateMachine 管理直属 State；BehaviorManager 管理直属 Behavior。
@@ -88,14 +88,16 @@ components ──按需协作──> 其他 components 或 resources
 |---|---|---|
 | EventBus | 低频跨系统事件、去重订阅、once 与取消订阅 | 不替代实体内高频 signal |
 | Registry | “内容类型 + 内容 ID → 非空 Variant”运行时映射 | 不负责持久化或场景树发现 |
-| Save | `user://saves/` 下任意 Resource 的保存、读取、删除与中断恢复 | 所有候选读取失败时当前固定返回新的 `UFrameRunData` |
+| Save | `user://saves/` 下任意 Resource 的保存、读取、删除与中断恢复 | 所有候选读取失败时返回 `null`，由调用方创建项目自己的数据类型 |
 | Audio | BGM、UI 和普通非空间音效复用 | 空间音频使用场景内原生 2D/3D 播放器 |
 | Scene | 主场景切换、确认、线程加载与叠加场景 | 不负责画面遮罩 |
 | Transition | 顶层遮罩、淡变与带遮罩的切场景流程 | 场景加载委托给 SceneService |
 | Input | 短时动作缓冲和本服务查询层的锁定 | 不屏蔽原生 `Input` 或节点输入回调 |
 | Camera | Camera2D 的 offset / rotation trauma 震动 | 不负责跟随、缩放和关卡取景 |
 
-EventBus 与 Registry 始终保持小型语义：它们不引入订阅对象层级、全局实体查询或自动持久化。
+EventBus 与 Registry 始终保持小型语义：它们不引入订阅对象层级、全局实体查询或自动持久化。EventBus 使用共享记录中的 active 标记让旧发布快照识别已取消或已消费的订阅，嵌套发布也不会重复消费 once。
+
+SceneService 的 `current_scene_path` 直接读取 `SceneTree.current_scene`，切换间隙为空；成功提交后通过原生 `scene_changed` 确认，不维护路径副本或固定帧数轮询。被较新请求覆盖时返回 `ERR_SKIP`。Audio 的淡变包络与用户音量独立，音量或静音变化不取消正在进行的切歌和停止请求。
 
 ## 局部组件边界
 
@@ -103,7 +105,7 @@ EventBus 与 Registry 始终保持小型语义：它们不引入订阅对象层�
 |---|---|
 | `UFrameHealth` | 生命、伤害、治疗、死亡、无敌时间及按调用读取的可选 Stats 最大生命 |
 | `UFrameTeam` | 阵营、友军和敌对关系 |
-| `UFrameHitbox2D` | 伤害信息、单次激活命中记录，以及可选的命中后释放父实体 |
+| `UFrameHitbox2D` | 伤害信息、可选单次激活命中记录及命中确认信号 |
 | `UFrameHurtbox2D` | 碰撞目标解析、双方都有 Team 时的友军过滤、Health 结算与命中确认 |
 | `UFrameStats` | 基础属性、修正优先级、最终值缓存和运行期限时修正 |
 | `UFrameInventory` | 单一背包模型，同时提供数量、格子、堆叠、移动、拆分与整理 API |
@@ -111,7 +113,9 @@ EventBus 与 Registry 始终保持小型语义：它们不引入订阅对象层�
 | `UFrameStateMachine` | 互斥状态收集、注入、切换和帧更新转发 |
 | `UFrameBehaviorManager` | 可以并行启停的直属 Behavior 注入和统一控制 |
 
-组件通过场景树组合，而不是要求实体继承大型框架基类。Health、Team 和 Hurtbox 保持分离；Hitbox 当前还保留 `destroy_on_hit` 这一可选兼容行为，以及供显式调用的池取出重置钩子。Pool 只调用池化场景根的钩子，因此 Hitbox 作为子节点时应由实体根转发重置或显式调用 `reset_hits()`。背包规则集中在一个 Inventory 模型，View 不保存第二套内容。
+组件通过场景树组合，而不是要求实体继承大型框架基类。Health、Team 和 Hurtbox 保持分离；Hitbox 不释放实体，由实体响应 `hit_confirmed` 决定销毁、穿透或归还。Pool 只调用池化场景根的钩子，因此 Hitbox 作为子节点时应由实体根转发重置或显式调用 `reset_hits()`。背包规则集中在一个 Inventory 模型，View 不保存第二套内容。
+
+Stats 用一个有序字典维护修正成员与添加顺序，按属性数组维护运算顺序。`base_stats` 读取返回只读快照，整体赋值复制输入并失效缓存；运行时单项修改使用 `set_base_stat()`。未配置基础值的查询不缓存默认值，避免不同调用方的默认值互相污染。修正移除从基础值重新计算，不提供反向还原运算。
 
 ### Pool 当前语义
 
@@ -149,6 +153,8 @@ StateMachine 在 `_ready()` 中一次性收集直属 State，先建立完整状�
 ```
 
 状态机只向当前 State 转发普通帧和物理帧。`connect_state_changed()` 在初始化完成后连接时会立即同步当前状态，避免漏掉初始切换。
+
+`on_enter()`、`on_exit()` 和 `state_changed` 通知期间拒绝同步再次切换；需要后续转换时使用 `change_state.call_deferred(...)`。初始化失败且没有当前状态时不运行两种帧回调。
 
 BehaviorManager 在入树时绑定已有直属 Behavior，并监听后来进入树的直属 Behavior。Behavior 等待所属实体 ready 后进入；启用、禁用和离树保证 `on_enter()` / `on_exit()` 成对，并同步自身两种帧处理状态。Behavior 节点名就是查询 ID。
 
@@ -197,7 +203,7 @@ Resource 不负责 Node 生命周期。共享 LootTable 不保存某个敌人或
 - Behavior 只在进入后启用普通帧和物理帧回调。
 - 高频战斗通过直接调用和局部 signal 结算，不经过 EventBus。
 - Pool 普通空闲复用与正常满载溢出都不扫描完整所有权集合；触顶时直接处理最早活跃生命周期，只有账本矛盾才完整修复。
-- Inventory 缓存物品总数；批量操作集中提交变化。
+- Inventory 缓存物品总数；`add_items()` 只扫描一次格子建立事务局部索引，按请求顺序装入并集中通知；整理原地更新有变化的格子，不重复重建已排序内容。
 - Registry 不扫描场景树，目录扫描只在显式调用时发生。
 - Camera 只有在缺少有效显式绑定时才按 `main_camera` Group 查找。
 - 固定结构场景化；重复 View、Tween、粒子和池实例按需创建。
@@ -216,6 +222,8 @@ Resource 不负责 Node 生命周期。共享 LootTable 不保存某个敌人或
 ## 测试入口
 
 `tests/test_runner.tscn` 是综合回归入口，成功时输出 `UFRAME_TESTS_OK` 并以退出码 `0` 结束。当前覆盖 Core、服务、组件、Resource、四个示例的场景组成及关键运行行为。
+
+其中 `framework_boundaries.gd` 覆盖嵌套 once、Stats 缓存与序列化隔离、批量背包、HP 通知、State 重入、Input 入树前缓冲、Camera 幂等和 Audio 连续请求。
 
 `tests/scene_transition_source.tscn` 验证真实 `current_scene`、场景服务、遮罩和过渡状态；支持 `--async`，以及 `--arena`、`--platformer`、`--loot`、`--spider` 目标参数。
 

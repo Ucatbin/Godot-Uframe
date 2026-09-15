@@ -3,6 +3,7 @@ extends Node
 ## UFrame 的无第三方依赖回归测试。覆盖核心不变量、历史故障和主要可选模块。
 
 const POOL_LIFECYCLE_REENTRY_SCENE := preload("res://tests/pool_lifecycle_reentry_item.tscn")
+const FRAMEWORK_BOUNDARIES := preload("res://tests/framework_boundaries.gd")
 
 class LifecycleBehavior extends UFrameBehavior:
 	var enter_count := 0
@@ -81,6 +82,10 @@ func _ready() -> void:
 	await _test_behavior_lifecycle()
 	await _test_audio_volume()
 	_test_save_recovery()
+	var boundary_tests := FRAMEWORK_BOUNDARIES.new()
+	add_child(boundary_tests)
+	_failures += await boundary_tests.run()
+	boundary_tests.queue_free()
 	# 给 queue_free、音频播放流和延迟信号足够的清理帧，确保测试退出时没有伪泄漏警告。
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -1597,6 +1602,7 @@ func _test_save_recovery() -> void:
 	_expect(loaded != null and loaded.custom_data.get("score") == 99, "load restores backup after interrupted replacement")
 	_expect(FileAccess.file_exists(main_path), "backup is promoted to main save")
 	_expect(service.delete("uframe_test"), "save delete removes recovery family")
+	_expect(service.load("uframe_test") == null, "missing save returns null for the caller to create typed data")
 	service.free()
 
 func _expect(condition: bool, message: String) -> void:

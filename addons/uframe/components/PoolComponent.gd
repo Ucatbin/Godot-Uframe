@@ -15,14 +15,17 @@ extends Node
 class_name UFramePool
 
 #region 信号
-## 实例完成激活和取出钩子后发出。[param instance] 是本次取出的实例。
+## 实例完成激活和取出钩子后发出。 [br][br]
+## [param instance] : 本次操作的池化实例
 signal instance_acquired(instance: Node)
 
-## 实例完成归还钩子并停用后发出。
-## 容量溢出复用时，[param instance] 随后会立即进入新的取出生命周期。
+## 实例完成归还钩子并停用后发出。 [br]
+## 容量溢出复用时，该实例随后会立即进入新的取出生命周期。 [br][br]
+## [param instance] : 本次操作的池化实例
 signal instance_released(instance: Node)
 
-## 新实例完成入树和停用后发出；预热阶段创建的实例也会触发。
+## 新实例完成入树和停用后发出；预热阶段创建的实例也会触发。 [br][br]
+## [param instance] : 本次操作的池化实例
 signal instance_created(instance: Node)
 #endregion
 
@@ -77,8 +80,8 @@ func _ready() -> void:
 #endregion
 
 #region 池生命周期
-## 获取一个已经激活的池化实例。
-## 达到 [member maximum_size] 且没有空闲项时，结束最早活跃实例的生命周期并立即复用。
+## 获取一个已经激活的池化实例。 [br]
+## 达到 [member maximum_size] 且没有空闲项时，结束最早活跃实例的生命周期并立即复用。 [br]
 ## [member pool_scene] 未配置或无法获得有效实例时返回 [code]null[/code]。
 func acquire() -> Node:
 	if pool_scene == null:
@@ -142,8 +145,9 @@ func acquire() -> Node:
 		return null
 	return instance
 
-## 归还 [param instance] 并结束本次取出生命周期。
-## 成功返回 [code]true[/code]；实例无效、正在删除、非本池所有或已经归还时返回 [code]false[/code]。
+## 归还 [param instance] 并结束本次取出生命周期。 [br]
+## 成功返回 [code]true[/code]；实例无效、正在删除、非本池所有或已经归还时返回 [code]false[/code]。 [br][br]
+## [param instance] : 本次操作的池化实例
 func release(instance: Node) -> bool:
 	if _lifecycle_transaction_active:
 		push_warning("[UFramePool] 生命周期事务期间不能同步 release()；请使用 call_deferred()")
@@ -160,7 +164,7 @@ func release(instance: Node) -> bool:
 	_lifecycle_transaction_active = false
 	return true
 
-## 排队释放本池拥有的全部有效实例，并立即清空内部引用。
+## 排队释放本池拥有的全部有效实例，并立即清空内部引用。 [br]
 ## 通常只在销毁池或切换系统时调用。
 func clear() -> void:
 	if _lifecycle_transaction_active:
@@ -187,7 +191,7 @@ func get_total_count() -> int:
 #endregion
 
 #region 实例管理
-## 从活跃映射中移除并返回最早取出的有效实例。
+## 从活跃映射中移除并返回最早取出的有效实例。 [br]
 ## 失效项会在遇到时惰性清理；没有活跃项时返回 [code]null[/code]。
 func _take_oldest_active() -> Node:
 	while not _active.is_empty():
@@ -209,8 +213,9 @@ func _take_oldest_active() -> Node:
 		return instance
 	return null
 
-## 对 [param instance] 调用归还钩子并停用。
-## 钩子删除实例或将其移出本池时清理所有权并返回 [code]false[/code]，否则返回 [code]true[/code]。
+## 对 [param instance] 调用归还钩子并停用。 [br]
+## 钩子删除实例或将其移出本池时清理所有权并返回 [code]false[/code]，否则返回 [code]true[/code]。 [br][br]
+## [param instance] : 本次操作的池化实例
 func _end_instance_lifecycle(instance: Node) -> bool:
 	if instance.has_method("_on_pool_release"):
 		instance.call("_on_pool_release")
@@ -242,8 +247,10 @@ func _create_instance() -> Node:
 		return null
 	return instance
 
-## 设置 [param instance] 的根节点处理模式和可见性，不遍历场景结构。
-## Godot 会根据继承的处理模式和碰撞对象的 [code]disable_mode[/code] 自动退出或恢复物理模拟。
+## 设置 [param instance] 的根节点处理模式和可见性，不遍历场景结构。 [br]
+## Godot 会根据继承的处理模式和碰撞对象的 [code]disable_mode[/code] 自动退出或恢复物理模拟。 [br][br]
+## [param instance] : 本次操作的池化实例 [br]
+## [param active] : 是否启用实例
 func _set_instance_active(instance: Node, active: bool) -> void:
 	instance.process_mode = Node.PROCESS_MODE_INHERIT if active else Node.PROCESS_MODE_DISABLED
 	if instance is CanvasItem:
@@ -251,7 +258,7 @@ func _set_instance_active(instance: Node, active: bool) -> void:
 	elif instance is Node3D:
 		(instance as Node3D).visible = active
 
-## 在容量与分类账本矛盾时完整修复内部引用。
+## 在容量与分类账本矛盾时完整修复内部引用。 [br]
 ## 正常取出、归还和溢出路径不会调用本方法。
 func _repair_bookkeeping() -> void:
 	var classified: Dictionary = {}
@@ -289,7 +296,8 @@ func _repair_bookkeeping() -> void:
 		if not classified.has(instance):
 			_active[instance] = true
 
-## 从全部容器移除即将退出场景树的 [param instance]。
+## 从全部容器移除即将退出场景树的 [param instance]。 [br][br]
+## [param instance] : 本次操作的池化实例
 func _on_instance_exiting(instance: Node) -> void:
 	_available.erase(instance)
 	_active.erase(instance)

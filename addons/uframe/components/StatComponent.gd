@@ -8,28 +8,50 @@ extends Node
 class_name UFrameStats
 
 #region 信号
-## 基础值或修正发生变化并完成重新计算后发出。
-## [param stat_name] 是属性名，[param new_value] 是新的最终值。
+## 基础值或修正发生变化并完成重新计算后发出。 [br][br]
+## [param stat_name] : 属性名 [br]
+## [param new_value] : 重新计算后的最终属性值
 signal stat_changed(stat_name: String, new_value: float)
 
-## 属性修正完成添加后发出。[param mod] 是本次添加的修正。
+## 属性修正完成添加后发出。 [br][br]
+## [param mod] : 要处理的属性修正 Resource
 signal modifier_added(mod: UFrameStatModifier)
 
-## 属性修正完成移除后发出。[param mod] 是本次移除的修正。
+## 属性修正完成移除后发出。 [br][br]
+## [param mod] : 要处理的属性修正 Resource
 signal modifier_removed(mod: UFrameStatModifier)
 #endregion
 
 #region Inspector 配置
-## 实体自身的基础属性映射，不包含任何修正。
-@export var base_stats: Dictionary = {}
+## 基础属性配置；读取返回只读快照，单项修改使用 [method set_base_stat]。
+## 整体赋值会复制输入、清除缓存，并通知受影响的属性。
+@export var base_stats: Dictionary:
+	get:
+		var snapshot := _base_stats.duplicate()
+		snapshot.make_read_only()
+		return snapshot
+	set(value):
+		if not _can_mutate_modifiers() or _base_stats == value:
+			return
+		var affected: Dictionary = {}
+		for stat_name: String in _base_stats:
+			affected[stat_name] = true
+		for stat_name: String in value:
+			affected[stat_name] = true
+		_base_stats = value.duplicate()
+		_cache.clear()
+		_notifying_modifier_transaction = true
+		for stat_name: String in affected:
+			stat_changed.emit(stat_name, get_stat(stat_name))
+		_notifying_modifier_transaction = false
 #endregion
 
 #region 运行时状态
-## 当前全部生效修正。
-var _modifiers: Array[UFrameStatModifier] = []
+## 基础值的唯一运行时存储，不向调用方暴露可写引用。
+var _base_stats: Dictionary = {}
 
-## 以 Resource 实例为键的成员集合，用于常数时间拒绝重复添加和确认移除目标。
-var _modifier_lookup: Dictionary = {}
+## 生效修正的有序集合，同时维护成员查询与添加顺序。
+var _modifiers: Dictionary[UFrameStatModifier, bool] = {}
 
 ## 属性名到已计算最终值的缓存。
 var _cache: Dictionary[String, float] = {}
@@ -48,7 +70,7 @@ var _notifying_modifier_transaction := false
 #endregion
 
 #region 生命周期
-## 只有存在限时修正时才启用帧处理。
+## 只有存在限时修正时才启用帧处理。 [br]
 ## 修正可能在节点入树前加入，因此不能在这里无条件关闭处理。
 func _ready() -> void:
 	set_process(not _elapsed.is_empty())
@@ -61,22 +83,31 @@ func _process(delta: float) -> void:
 			_expired_buffer.append(mod)
 	if not _expired_buffer.is_empty():
 		remove_modifiers(_expired_buffer)
-		# 及时释放已过期 Resource 引用，同时保留数组容量供下次复用
+		# 及时释放已过期 Resource 引用
 		_expired_buffer.clear()
 	elif _elapsed.is_empty():
 		set_process(false)
 #endregion
 
 #region 属性操作
-## 把 [param stat_name] 的基础值设为 [param value]，清除对应缓存并发出 [signal stat_changed]。
+## 把 [param stat_name] 的基础值设为 [param value]，清除对应缓存并发出 [signal stat_changed]。 [br][br]
+## [param stat_name] : 属性名 [br]
+## [param value] : 新的基础值
 func set_base_stat(stat_name: String, value: float) -> void:
-	base_stats[stat_name] = value
+	if not _can_mutate_modifiers():
+		return
+	if _base_stats.has(stat_name) and _base_stats[stat_name] == value:
+		return
+	_base_stats[stat_name] = value
 	_cache.erase(stat_name)
+	_notifying_modifier_transaction = true
 	stat_changed.emit(stat_name, get_stat(stat_name))
+	_notifying_modifier_transaction = false
 
-## 添加 [param mod]，按优先级重排其属性分组，并刷新对应最终值。
-## 空值和已经生效的同一 Resource 实例会被拒绝；成功时返回 [code]true[/code]。
-## 限时修正会自动开始计时并启用普通帧处理。
+## 添加 [param mod]，按优先级重排其属性分组，并刷新对应最终值。 [br]
+## 空值和已经生效的同一 Resource 实例会被拒绝；成功时返回 [code]true[/code]。 [br]
+## 限时修正会自动开始计时并启用普通帧处理。 [br][br]
+## [param mod] : 要处理的属性修正 Resource
 func add_modifier(mod: UFrameStatModifier) -> bool:
 	if not _can_mutate_modifiers():
 		return false
@@ -91,14 +122,14 @@ func add_modifier(mod: UFrameStatModifier) -> bool:
 	_notifying_modifier_transaction = false
 	return true
 
-## 批量添加 [param modifiers]，返回实际加入的修正数量。
-## 空值、已生效实例和参数内的重复实例会被跳过；每个受影响属性只排序、重算并通知一次。
+## 批量添加 [param modifiers]，返回实际加入的修正数量。 [br]
+## 空值、已生效实例和参数内的重复实例会被跳过；每个受影响属性只排序、重算并通知一次。 [br][br]
+## [param modifiers] : 本次处理的属性修正数组
 func add_modifiers(modifiers: Array[UFrameStatModifier]) -> int:
 	if not _can_mutate_modifiers():
 		return 0
 	var added: Array[UFrameStatModifier] = []
-	var affected_stats: Array[String] = []
-	var affected_lookup: Dictionary = {}
+	var affected_stats: Dictionary[String, bool] = {}
 	var added_timed_modifier := false
 	for mod: UFrameStatModifier in modifiers:
 		if not _can_add_modifier(mod):
@@ -106,9 +137,7 @@ func add_modifiers(modifiers: Array[UFrameStatModifier]) -> int:
 		if _store_modifier(mod):
 			added_timed_modifier = true
 		added.append(mod)
-		if not affected_lookup.has(mod.stat_name):
-			affected_lookup[mod.stat_name] = true
-			affected_stats.append(mod.stat_name)
+		affected_stats[mod.stat_name] = true
 	if added.is_empty():
 		return 0
 	if added_timed_modifier:
@@ -123,12 +152,13 @@ func add_modifiers(modifiers: Array[UFrameStatModifier]) -> int:
 	_notifying_modifier_transaction = false
 	return added.size()
 
-## 移除 [param mod] 并刷新对应最终值；成功时返回 [code]true[/code]。
-## 空值或不在当前列表中的修正不会改变组件状态，并返回 [code]false[/code]。
+## 移除 [param mod] 并刷新对应最终值；成功时返回 [code]true[/code]。 [br]
+## 空值或不在当前列表中的修正不会改变组件状态，并返回 [code]false[/code]。 [br][br]
+## [param mod] : 要处理的属性修正 Resource
 func remove_modifier(mod: UFrameStatModifier) -> bool:
 	if not _can_mutate_modifiers():
 		return false
-	if mod == null or not _modifier_lookup.has(mod):
+	if mod == null or not _modifiers.has(mod):
 		return false
 	_erase_modifier(mod)
 	_cache.erase(mod.stat_name)
@@ -140,29 +170,26 @@ func remove_modifier(mod: UFrameStatModifier) -> bool:
 	_notifying_modifier_transaction = false
 	return true
 
-## 批量移除 [param modifiers]，返回实际移除的修正数量。
-## 每个实例至多移除一次，每个受影响属性只失效、重算并通知一次。
+## 批量移除 [param modifiers]，返回实际移除的修正数量。 [br]
+## 每个实例至多移除一次，每个受影响属性只失效、重算并通知一次。 [br][br]
+## [param modifiers] : 本次处理的属性修正数组
 func remove_modifiers(modifiers: Array[UFrameStatModifier]) -> int:
 	if not _can_mutate_modifiers():
 		return 0
 	var removed: Array[UFrameStatModifier] = []
 	var removal_lookup: Dictionary = {}
-	var affected_stats: Array[String] = []
-	var affected_lookup: Dictionary = {}
+	var affected_stats: Dictionary[String, bool] = {}
 	for mod: UFrameStatModifier in modifiers:
-		if mod == null or removal_lookup.has(mod) or not _modifier_lookup.has(mod):
+		if mod == null or removal_lookup.has(mod) or not _modifiers.has(mod):
 			continue
 		removed.append(mod)
 		removal_lookup[mod] = true
-		if not affected_lookup.has(mod.stat_name):
-			affected_lookup[mod.stat_name] = true
-			affected_stats.append(mod.stat_name)
+		affected_stats[mod.stat_name] = true
 	if removed.is_empty():
 		return 0
 
-	_compact_modifier_array(_modifiers, removal_lookup)
 	for mod: UFrameStatModifier in removed:
-		_modifier_lookup.erase(mod)
+		_modifiers.erase(mod)
 		_elapsed.erase(mod)
 	for stat_name: String in affected_stats:
 		var bucket: Array = _by_stat[stat_name]
@@ -180,7 +207,8 @@ func remove_modifiers(modifiers: Array[UFrameStatModifier]) -> int:
 	_notifying_modifier_transaction = false
 	return removed.size()
 
-## 移除全部来源名等于 [param source_name] 的修正。
+## 移除全部来源名等于 [param source_name] 的修正。 [br][br]
+## [param source_name] : 待移除修正的来源名
 func remove_by_source(source_name: String) -> void:
 	if not _can_mutate_modifiers():
 		return
@@ -192,47 +220,52 @@ func remove_by_source(source_name: String) -> void:
 #endregion
 
 #region 属性查询
-## 获取 [param stat_name] 的最终值；基础属性不存在时使用 [param base]。
-## 第一次查询按优先级应用全部修正并缓存，后续查询直接读取缓存。
+## 获取 [param stat_name] 的最终值；基础属性不存在时使用 [param base]。 [br]
+## 已配置的属性缓存最终值；未配置的属性按本次默认值计算，不缓存调用方的默认值。 [br][br]
+## [param stat_name] : 属性名 [br]
+## [param base] : 基础属性不存在时使用的默认基础值
 func get_stat(stat_name: String, base: float = 0.0) -> float:
 	if _cache.has(stat_name):
 		return _cache[stat_name]
-	var current: float = base_stats.get(stat_name, base)
+	var current: float = _base_stats.get(stat_name, base)
 	for mod: UFrameStatModifier in _by_stat.get(stat_name, []):
 		current = mod.apply(current)
-	_cache[stat_name] = current
+	if _base_stats.has(stat_name):
+		_cache[stat_name] = current
 	return current
 
-## 获取 [param stat_name] 的基础值，不包含修正；不存在时返回 [code]0.0[/code]。
+## 获取 [param stat_name] 的基础值，不包含修正；不存在时返回 [code]0.0[/code]。 [br][br]
+## [param stat_name] : 属性名
 func get_base_stat(stat_name: String) -> float:
-	return base_stats.get(stat_name, 0.0)
+	return _base_stats.get(stat_name, 0.0)
 
 ## 获取全部属性修正的数组副本，不暴露内部列表。
 func get_all_modifiers() -> Array[UFrameStatModifier]:
-	return _modifiers.duplicate()
+	return _modifiers.keys()
 #endregion
 
 #region 内部方法
-## 判断当前是否允许修改修正集合；同步信号监听器需要使用 call_deferred() 延后同组件修改。
+## 判断当前是否允许修改基础值或修正；同步监听器需使用 call_deferred() 延后同组件修改。
 func _can_mutate_modifiers() -> bool:
 	if not _notifying_modifier_transaction:
 		return true
-	push_warning("[UFrameStats] 修正事务通知期间不能同步增删同一组件的修正；请使用 call_deferred()")
+	push_warning("[UFrameStats] 属性通知期间不能同步修改同一组件；请使用 call_deferred()")
 	return false
 
-## 检查修正能否加入；重复实例会给出明确诊断，避免限时计时状态发生歧义。
+## 检查修正能否加入；重复实例会给出明确诊断，避免限时计时状态发生歧义。 [br][br]
+## [param mod] : 要处理的属性修正 Resource
 func _can_add_modifier(mod: UFrameStatModifier) -> bool:
 	if mod == null:
 		return false
-	if _modifier_lookup.has(mod):
+	if _modifiers.has(mod):
 		push_warning("[UFrameStats] 同一个 UFrameStatModifier 实例不能重复添加；需要独立层数时请先 duplicate()")
 		return false
 	return true
 
-## 写入一项已经通过校验的修正；返回它是否需要帧计时。
+## 写入一项已经通过校验的修正；返回它是否需要帧计时。 [br][br]
+## [param mod] : 要处理的属性修正 Resource
 func _store_modifier(mod: UFrameStatModifier) -> bool:
-	_modifiers.append(mod)
-	_modifier_lookup[mod] = true
+	_modifiers[mod] = true
 	var bucket: Array
 	if _by_stat.has(mod.stat_name):
 		bucket = _by_stat[mod.stat_name]
@@ -245,11 +278,10 @@ func _store_modifier(mod: UFrameStatModifier) -> bool:
 	_elapsed[mod] = 0.0
 	return true
 
-## 从全部索引中移除一项已经确认存在的修正。
+## 从全部索引中移除一项已经确认存在的修正。 [br][br]
+## [param mod] : 要处理的属性修正 Resource
 func _erase_modifier(mod: UFrameStatModifier) -> void:
-	var modifier_index := _modifiers.find(mod)
-	_modifiers.remove_at(modifier_index)
-	_modifier_lookup.erase(mod)
+	_modifiers.erase(mod)
 	_elapsed.erase(mod)
 	var bucket: Array = _by_stat[mod.stat_name]
 	var bucket_index := bucket.find(mod)
@@ -257,17 +289,22 @@ func _erase_modifier(mod: UFrameStatModifier) -> void:
 	if bucket.is_empty():
 		_by_stat.erase(mod.stat_name)
 
-## 重排一个属性的修正并清除缓存；调用方随后统一重算和发送变化信号。
+## 重排一个属性的修正并清除缓存；调用方随后统一重算和发送变化信号。 [br][br]
+## [param stat_name] : 属性名
 func _sort_and_invalidate_stat(stat_name: String) -> void:
 	var bucket: Array = _by_stat[stat_name]
 	bucket.sort_custom(_has_lower_priority)
 	_cache.erase(stat_name)
 
-## 按优先级升序排列修正，确保更小的优先级先参与计算。
+## 按优先级升序排列修正，确保更小的优先级先参与计算。 [br][br]
+## [param a] : 待比较的前一项修正 [br]
+## [param b] : 待比较的后一项修正
 func _has_lower_priority(a: UFrameStatModifier, b: UFrameStatModifier) -> bool:
 	return a.priority < b.priority
 
-## 原地压缩 [param modifiers]，一次扫描移除 [param removal_lookup] 中的全部实例。
+## 原地压缩 [param modifiers]，一次扫描移除 [param removal_lookup] 中的全部实例。 [br][br]
+## [param modifiers] : 本次处理的属性修正数组 [br]
+## [param removal_lookup] : 以待移除修正实例为键的查找字典
 func _compact_modifier_array(modifiers: Array, removal_lookup: Dictionary) -> void:
 	var write_index := 0
 	var original_size := modifiers.size()

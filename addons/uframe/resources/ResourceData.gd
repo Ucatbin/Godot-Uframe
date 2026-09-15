@@ -36,11 +36,13 @@ class_name UFrameResourceData
 #endregion
 
 #region 查询方法
-## 判断是否包含指定标签。
+## 判断是否包含指定标签。 [br][br]
+## [param tag] : 待查询的标签
 func has_tag(tag: StringName) -> bool:
 	return tag in tags
 
-## 判断是否匹配 [param filter_tags] 中的任一标签。
+## 判断是否匹配 [param filter_tags] 中的任一标签。 [br][br]
+## [param filter_tags] : 待匹配的标签数组
 func matches_any_tag(filter_tags: Array[StringName]) -> bool:
 	for tag in filter_tags:
 		if tag in tags:

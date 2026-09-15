@@ -363,6 +363,21 @@ func _benchmark_inventory() -> void:
 		{"slots": item_count, "items": item_count}
 	)
 	_expect(inventory.get_total_count() == item_count, "Inventory 重复整理不得改变总数量")
+	# 同一份负载走批量入口，验证集中加载不必逐项扫描整个背包。
+	var expected_slots := inventory.get_slots()
+	inventory.clear()
+	var batch: Dictionary[StringName, int] = {}
+	for item_id: StringName in ids:
+		batch[item_id] = 1
+	started_at = Time.get_ticks_usec()
+	var added := inventory.add_items(batch)
+	_record_result(
+		"inventory_fill_batch", item_count, Time.get_ticks_usec() - started_at,
+		{"slots": item_count}
+	)
+	_expect(added == batch and inventory.get_total_count() == item_count, "Inventory 批量加入必须保持全部数量")
+	inventory.sort_and_merge()
+	_expect(inventory.get_slots() == expected_slots, "Inventory 批量与逐项加入得到相同整理结果")
 	inventory.free()
 #endregion
 

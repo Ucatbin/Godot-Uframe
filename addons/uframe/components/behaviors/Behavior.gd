@@ -88,13 +88,6 @@ func _physics_process(delta: float) -> void:
 	on_physics_update(delta)
 #endregion
 
-#region 行为控制
-## 设置行为是否启用；节点就绪后会同步进入或退出生命周期。 [br][br]
-## [param value] : 启用状态
-func set_enabled(value: bool) -> void:
-	enabled = value
-#endregion
-
 #region 生命周期控制
 ## 进入行为生命周期；已经进入时不会重复调用 [method on_enter]。
 func _enter_behavior() -> void:

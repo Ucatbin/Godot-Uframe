@@ -94,13 +94,17 @@ if error != OK:
 	push_error("场景切换失败：%d" % error)
 ```
 
-需要黑幕淡入淡出时直接使用过渡服务。即使加载失败或超时，遮罩也会恢复透明：
+需要黑幕淡入淡出时直接使用过渡服务。即使加载失败，遮罩也会恢复透明：
 
 ```gdscript
 var succeeded := await UFrame.transitions.change_scene("res://levels/level_01.tscn")
 ```
 
 只想提交切换、不等待结果时，才使用同步的 `UFrame.scenes.change_scene()`。
+
+场景就绪由 Godot 原生 `SceneTree.scene_changed` 确认；较新请求覆盖旧请求时，旧请求返回 `ERR_SKIP`。`current_scene_path` 直接反映当前主场景，包括使用原生 API 切换的场景；替换间隙可能为空。
+
+存档读取失败时 `UFrame.save.load()` 返回 `null`。调用方决定创建哪个新游戏数据类型，例如 `var data := UFrame.save.load("slot_1") as MySaveData`，然后在 `data == null` 时创建 `MySaveData.new()`。
 
 ## 高频局部组件
 
@@ -121,6 +125,8 @@ $HealthComponent.damaged.connect(_on_damaged)
 ```
 
 双方都挂有 `UFrameTeam` 时，Hurtbox 默认会过滤友军；任一方没有 Team 时仍保持独立可用。池化实体重新取出时可调用 `UFrameHealth.reset()`，它会补满生命并清除旧无敌计时。
+
+命中后的实体生命周期由实体脚本处理：监听 `hit_confirmed` 后调用 `queue_free()`、归还对象池或继续穿透。Hitbox 不再提供 `destroy_on_hit`；关闭单次命中限制时也不会保存命中集合。设置最大生命并补满、切换 Health 的 Stats 依赖时，实际 HP 变化会发送 `hp_changed`。
 
 ### 对象池
 
@@ -161,6 +167,16 @@ inventory.split_half(8, 9)
 inventory.sort_and_merge()
 ```
 
+集中掉落或装载大量物品使用批量入口，只扫描一次背包建立本次操作所需的索引：
+
+```gdscript
+var requested: Dictionary[StringName, int] = {&"potion": 20, &"sword": 2}
+var added := inventory.add_items(requested)
+# 容量不足时允许部分加入，调用方使用 added 判断剩余掉落。
+```
+
+批量请求按字典顺序分配空格；每个变化格子只通知一次，整体只通知一次。整理也只通知实际变化的格子，已经整理好时不发送变化信号。
+
 缩容、降低堆叠上限和整理会先检查现有内容能否安全容纳；检测到丢物风险时拒绝修改。`set_slots()` 会验证容量内的保存条目后整体替换，`get_count()` 使用缓存；一次批量消耗只发送一次整体变化信号。
 
 宿主项目可以另外创建静态物品 Resource 和格子 View；它们只负责内容定义与显示，不保存背包内容或移动规则，因此不会形成第二套 Inventory。
@@ -174,12 +190,18 @@ inventory.sort_and_merge()
 var movement := $BehaviorManager.get_behavior(&"Movement")
 $BehaviorManager.set_behavior_enabled(&"Movement", false)
 ```
+
+状态切换回调（`on_enter`、`on_exit`、`state_changed`）内不允许同步再次切换，需要继续转换时使用 `state_machine.change_state.call_deferred(&"next_state")`。Behavior 直接设置 `enabled`，不再提供同义的 `set_enabled()`。
 - `UFrameStats` + `UFrameStatModifier`：按属性缓存计算结果；运行期加入限时修改器后按需进入帧循环。单项变化使用 `add_modifier()` / `remove_modifier()`；初始化装备、读档或同帧到期等集中变化使用 `add_modifiers()` / `remove_modifiers()`，每个受影响属性只排序、重算并发送一次 `stat_changed`。同一个 Modifier Resource 实例不能重复加入，需要独立层数时应为每层创建或复制独立实例。修正生效期间视为不可变；需要修改字段时先移除、修改，再重新加入。生命周期或 `stat_changed` 监听器若要继续增删同一个 Stats，应使用 `call_deferred()`。
 
 ```gdscript
 var modifiers: Array[UFrameStatModifier] = [weapon_modifier, buff_modifier]
 var added_count := $Stats.add_modifiers(modifiers)
 ```
+
+`base_stats` 仍可在 Inspector 配置。运行时读取返回只读快照：单项修改使用 `$Stats.set_base_stat("speed", 200.0)`；整体替换使用 `$Stats.base_stats = {...}`。组件复制输入字典，避免外部引用绕过缓存失效。基础值与修正的同步通知期间，后续修改都需要 `call_deferred()`。未配置属性的默认值仅用于本次查询，不进入共享缓存。
+
+移除修正由 Stats 从基础值重新计算，已删除无法可靠支持全部运算的 `StatModifier.revert()`。
 
 ## 数据 Resource
 

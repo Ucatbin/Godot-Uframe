@@ -30,9 +30,10 @@ class_name UFrameLootTable
 #endregion
 
 #region 主要方法
-## 抽取一次掉落。
-## 返回值固定包含 [code]content_id[/code]、[code]count[/code]、[code]miss_count[/code] 和
-## [code]pity_triggered[/code]；传入 [param rng] 后可获得可复现结果。
+## 抽取一次掉落。 [br]
+## 返回值固定包含 [code]content_id[/code]、[code]count[/code]、[code]miss_count[/code] 和 [code]pity_triggered[/code]。 [br][br]
+## [param miss_count] : 调用方保存的连续未掉落次数 [br]
+## [param rng] : 可选随机数生成器；为空时使用全局随机数，需要复现时由调用方配置固定种子
 func roll(miss_count: int = 0, rng: RandomNumberGenerator = null) -> Dictionary:
 	miss_count = maxi(miss_count, 0)
 	if _should_trigger_pity(miss_count):
@@ -47,8 +48,11 @@ func roll(miss_count: int = 0, rng: RandomNumberGenerator = null) -> Dictionary:
 	result["pity_triggered"] = false
 	return result
 
-## 连续抽取并按内容 ID 合并结果。
-## 返回 [code]drops[/code] 数组和下一次应继续使用的 [code]miss_count[/code]。
+## 连续抽取并按内容 ID 合并结果。 [br]
+## 返回 [code]drops[/code] 数组和下一次应继续使用的 [code]miss_count[/code]。 [br][br]
+## [param times] : 连续抽取次数 [br]
+## [param miss_count] : 调用方保存的连续未掉落次数 [br]
+## [param rng] : 可选随机数生成器；为空时使用全局随机数，需要复现时由调用方配置固定种子
 func roll_multi(times: int, miss_count: int = 0, rng: RandomNumberGenerator = null) -> Dictionary:
 	var totals: Dictionary[StringName, int] = {}
 	var current_misses := maxi(miss_count, 0)
@@ -74,7 +78,8 @@ func get_all_content_ids() -> Array[StringName]:
 #endregion
 
 #region 内部方法
-## 执行一次包含空掉落权重的加权抽取。
+## 执行一次包含空掉落权重的加权抽取。 [br][br]
+## [param rng] : 可选随机数生成器；为空时使用全局随机数，需要复现时由调用方配置固定种子
 func _roll_weighted(rng: RandomNumberGenerator) -> Dictionary:
 	var total_weight := maxf(no_drop_weight, 0.0)
 	for entry in entries:
@@ -94,7 +99,8 @@ func _roll_weighted(rng: RandomNumberGenerator) -> Dictionary:
 			return _make_result(entry, rng)
 	return _empty_result()
 
-## 判断当前连续未掉落次数是否满足有效保底配置。
+## 判断当前连续未掉落次数是否满足有效保底配置。 [br][br]
+## [param miss_count] : 调用方保存的连续未掉落次数
 func _should_trigger_pity(miss_count: int) -> bool:
 	return pity_count > 0 \
 		and miss_count >= pity_count \
@@ -102,14 +108,17 @@ func _should_trigger_pity(miss_count: int) -> bool:
 		and pity_entry_index < entries.size() \
 		and _is_eligible(entries[pity_entry_index])
 
-## 判断条目是否具有可抽取的 ID、权重和数量。
+## 判断条目是否具有可抽取的 ID、权重和数量。 [br][br]
+## [param entry] : 待检查或生成结果的掉落条目
 func _is_eligible(entry: UFrameLootEntry) -> bool:
 	return entry != null \
 		and not entry.content_id.is_empty() \
 		and entry.weight > 0.0 \
 		and maxi(entry.min_count, entry.max_count) > 0
 
-## 根据选中条目的数量范围生成掉落结果。
+## 根据选中条目的数量范围生成掉落结果。 [br][br]
+## [param entry] : 待检查或生成结果的掉落条目 [br]
+## [param rng] : 可选随机数生成器；为空时使用全局随机数，需要复现时由调用方配置固定种子
 func _make_result(entry: UFrameLootEntry, rng: RandomNumberGenerator) -> Dictionary:
 	var minimum := maxi(entry.min_count, 0)
 	var maximum := maxi(entry.max_count, minimum)

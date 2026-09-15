@@ -48,8 +48,9 @@ func _ready() -> void:
 #endregion
 
 #region 伤害结算
-## 接收 [param hitbox] 并执行完整伤害结算，返回实际伤害。
-## 周期性接触攻击也可以显式调用本方法，而不必伪造区域进入事件。
+## 接收 [param hitbox] 并执行完整伤害结算，返回实际伤害。 [br]
+## 周期性接触攻击也可以显式调用本方法，而不必伪造区域进入事件。 [br][br]
+## [param hitbox] : 提供攻击信息的 Hitbox
 func receive_hit(hitbox: UFrameHitbox2D) -> int:
 	if hitbox == null or _health == null or not hitbox.can_hit(self):
 		return 0
@@ -57,8 +58,6 @@ func receive_hit(hitbox: UFrameHitbox2D) -> int:
 		var source_team := UFrameTeam.of(hitbox.source)
 		if source_team and not source_team.is_hostile(_team):
 			return 0
-	if _health.is_invincible():
-		return 0
 	var applied_damage := _health.take_damage(hitbox.damage, hitbox.source)
 	if applied_damage > 0:
 		hitbox.mark_hit(self, applied_damage)
@@ -66,7 +65,8 @@ func receive_hit(hitbox: UFrameHitbox2D) -> int:
 #endregion
 
 #region 碰撞输入
-## 把进入的 [param area] 识别为 Hitbox；普通 [Area2D] 不会造成伤害。
+## 把进入的 [param area] 识别为 Hitbox；普通 [Area2D] 不会造成伤害。 [br][br]
+## [param area] : 进入受击区域的节点
 func _on_area_entered(area: Area2D) -> void:
 	var hitbox := area as UFrameHitbox2D
 	if hitbox:

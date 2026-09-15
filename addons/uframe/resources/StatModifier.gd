@@ -38,7 +38,8 @@ enum Op {
 #endregion
 
 #region 主要方法
-## 对 [param base_value] 应用当前运算并返回结果。
+## 对 [param base_value] 应用当前运算并返回结果。 [br][br]
+## [param base_value] : 本次运算的输入值
 func apply(base_value: float) -> float:
 	match operation:
 		Op.ADD:
@@ -51,23 +52,11 @@ func apply(base_value: float) -> float:
 			return value
 	return base_value
 
-## 对 [param current_value] 反向应用当前运算并返回结果。
-## 覆盖运算无法还原原值，因此只返回传入值。
-func revert(current_value: float) -> float:
-	match operation:
-		Op.ADD:
-			return current_value - value
-		Op.MULTIPLY:
-			return current_value / maxf(value, 0.0001)
-		Op.PERCENT:
-			return current_value / (1.0 + value)
-		Op.OVERRIDE:
-			return current_value
-	return current_value
 #endregion
 
 #region 查询方法
-## 判断本项修正是否已经在 [param elapsed] 秒后过期。
+## 判断本项修正是否已经在 [param elapsed] 秒后过期。 [br][br]
+## [param elapsed] : 本项修正已经生效的秒数
 func is_expired(elapsed: float) -> bool:
 	if duration < 0.0:
 		return false

@@ -142,7 +142,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 focus_mode = 0
-text = "抽取一次"
+text = "抽取一次 · Shift 十连"
 
 [node name="Actions" type="GridContainer" parent="MainMargin/ContentRow/RollPanel/RollColumn"]
 layout_mode = 2
